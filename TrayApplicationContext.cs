@@ -9,7 +9,8 @@ namespace CopilotUsage;
 
 internal sealed class TrayApplicationContext : IDisposable
 {
-	private readonly GitHubCopilotService m_CopilotService;
+	private readonly ClaudeUsageService    m_ClaudeService   = new();
+	private readonly GitHubCopilotService  m_CopilotService  = new();
 	private readonly UsageViewModel m_ViewModel;
 	private readonly bool m_IsDemoMode;
 
@@ -19,29 +20,11 @@ internal sealed class TrayApplicationContext : IDisposable
 	private bool m_IsRefreshing;
 
 	// Demo mode state
-	private int m_DemoUsageStep;
-	private int m_DemoDateIndex;
-	private int m_DemoTickCount;
-
-	// Demo date snapshots: interesting points in the month calendar to cycle through.
-	private static readonly DateTime[] DemoDates =
-	[
-		new DateTime( 2026, 1, 1, 0, 0, 0, DateTimeKind.Local ),   // Jan  1 — very start of month
-		new DateTime( 2026, 2, 14, 12, 0, 0, DateTimeKind.Local ),  // Feb 14 — mid-month
-		new DateTime( 2026, 2, 28, 23, 30, 0, DateTimeKind.Local ), // Feb 28 — last day of short month
-		new DateTime( 2026, 3, 1, 0, 30, 0, DateTimeKind.Local ),   // Mar  1 — very start of month
-		new DateTime( 2026, 3, 15, 12, 0, 0, DateTimeKind.Local ),  // Mar 15 — mid-month
-		new DateTime( 2026, 6, 30, 23, 55, 0, DateTimeKind.Local ), // Jun 30 — last day of 30-day month
-		new DateTime( 2026, 12, 31, 23, 59, 0, DateTimeKind.Local ),// Dec 31 — last day of year
-	];
-
-	// One demo tick every 2 s; advance the date every 5 ticks (= every 10 s)
-	private const int DemoDateTickInterval = 5;
+	private int m_DemoStageIndex;
 
 
-	public TrayApplicationContext( GitHubCopilotService copilotService, bool isDemoMode = false )
+	public TrayApplicationContext( bool isDemoMode = false )
 	{
-		m_CopilotService = copilotService ?? throw new ArgumentNullException( nameof( copilotService ) );
 		m_ViewModel = new UsageViewModel();
 		m_IsDemoMode = isDemoMode;
 
@@ -61,9 +44,22 @@ internal sealed class TrayApplicationContext : IDisposable
 
 	private void InitializeTrayIcon()
 	{
-		var contextMenu = new ContextMenuStrip();
+		var contextMenu = new ContextMenuStrip
+		{
+			Renderer  = new DarkMenuRenderer(),
+			BackColor = Color.FromArgb( 0x1A, 0x1A, 0x1A ),
+			ForeColor = Color.FromArgb( 0xEB, 0xEB, 0xEB ),
+		};
 		contextMenu.Items.Add( "Refresh", null, async ( _, _ ) => await RefreshAsync().ConfigureAwait( false ) );
 		contextMenu.Items.Add( "Settings…", null, ( _, _ ) => OpenSettings() );
+		contextMenu.Items.Add( "Raw API Response…", null, ( _, _ ) =>
+		{
+			var s = SettingsService.Load();
+			Func<Task<string>> getRaw = s.Provider == Models.UsageProvider.GitHubCopilot
+				? () => m_CopilotService.GetRawUsageJsonAsync( s.GitHubToken )
+				: () => m_ClaudeService.GetRawUsageJsonAsync( s.SessionKey );
+			System.Windows.Application.Current.Dispatcher.Invoke( () => new RawJsonWindow( getRaw ).Show() );
+		} );
 		contextMenu.Items.Add( "About", null, ( _, _ ) =>
 			System.Windows.Application.Current.Dispatcher.Invoke( () => new AboutWindow().ShowDialog() ) );
 		contextMenu.Items.Add( new ToolStripSeparator() );
@@ -72,7 +68,7 @@ internal sealed class TrayApplicationContext : IDisposable
 		m_NotifyIcon = new NotifyIcon
 		{
 			Icon = TrayIconHelper.CreateUsageIcon( null ),
-			Text = "Copilot Usage",
+			Text = "Claude AI Usage",
 			Visible = true,
 			ContextMenuStrip = contextMenu,
 		};
@@ -114,7 +110,7 @@ internal sealed class TrayApplicationContext : IDisposable
 		}
 		catch { /* already closing — ignore */ }
 
-		m_PopupWindow = new UsagePopupWindow( m_ViewModel );
+		m_PopupWindow = new UsagePopupWindow( m_ViewModel, m_IsDemoMode ? null : RefreshAsync );
 		m_PopupWindow.Closed += ( _, _ ) => m_PopupWindow = null;
 		m_PopupWindow.Show();
 		m_PopupWindow.Activate();
@@ -135,9 +131,11 @@ internal sealed class TrayApplicationContext : IDisposable
 
 		try
 		{
-			var data = await m_CopilotService.GetUsageAsync( settings.AccessToken ).ConfigureAwait( true );
+			var data = settings.Provider == Models.UsageProvider.GitHubCopilot
+			? await m_CopilotService.GetUsageAsync( settings.GitHubToken ).ConfigureAwait( true )
+			: await m_ClaudeService.GetUsageAsync( settings.SessionKey ).ConfigureAwait( true );
 
-			m_ViewModel.UpdateFromData( data );
+			m_ViewModel.UpdateFromData( data, settings.Provider );
 
 			if ( data.IsUnavailable )
 			{
@@ -172,8 +170,16 @@ internal sealed class TrayApplicationContext : IDisposable
 		var oldIcon = m_NotifyIcon.Icon;
 		m_NotifyIcon.Icon = TrayIconHelper.CreateUsageIcon( percent );
 
+		var provider = SettingsService.Load().Provider;
 		var prefix = m_IsDemoMode ? "[DEMO] " : string.Empty;
-		m_NotifyIcon.Text = $"{prefix}Copilot: {m_ViewModel.UsedRequests}/{m_ViewModel.LimitRequests} ({percent:0}%)";
+		var label  = provider == Models.UsageProvider.GitHubCopilot ? "Copilot" : "Claude";
+		m_NotifyIcon.Text = provider == Models.UsageProvider.GitHubCopilot
+			&& m_ViewModel.SessionUsed.HasValue
+			&& m_ViewModel.SessionLimit.HasValue
+			? string.IsNullOrEmpty( m_ViewModel.CopilotCreditsSummary )
+				? $"{prefix}{label}: {m_ViewModel.SessionUsed}/{m_ViewModel.SessionLimit} ({percent:0}%)"
+				: $"{prefix}{label}: {m_ViewModel.SessionUsed}/{m_ViewModel.SessionLimit}, {m_ViewModel.CopilotCreditsSummary}"
+			: $"{prefix}{label}: {percent:0}% used";
 		oldIcon?.Dispose();
 	}
 
@@ -188,7 +194,8 @@ internal sealed class TrayApplicationContext : IDisposable
 		var oldIcon = m_NotifyIcon.Icon;
 		m_NotifyIcon.Icon = TrayIconHelper.CreateUsageIcon( null );
 		var prefix = m_IsDemoMode ? "[DEMO] " : string.Empty;
-		m_NotifyIcon.Text = $"{prefix}Copilot Usage — error fetching data";
+		var label  = SettingsService.Load().Provider == Models.UsageProvider.GitHubCopilot ? "Copilot" : "Claude";
+		m_NotifyIcon.Text = $"{prefix}{label} — error fetching data";
 		oldIcon?.Dispose();
 	}
 
@@ -204,51 +211,62 @@ internal sealed class TrayApplicationContext : IDisposable
 	}
 
 
-	/// <summary>
-	/// Starts the demo-mode timer. Every 2 seconds the usage steps up by 5 % (wrapping at 100 → 0).
-	/// Every 5 ticks (10 s) the displayed month date advances to the next preset snapshot.
-	/// </summary>
+	// (sessionPercent, weeklyPercent, errorMessage) per stage
+	private static readonly (double Session, double Weekly, string? Error)[] s_DemoStages =
+	[
+		(  5,   4, null  ),  // attention
+		( 35,  28, null  ),  // strolling
+		( 70,  56, null  ),  // meow
+		( 85,  68, null  ),  // tired
+		(100,  80, null  ),  // sleeping
+		( 45,  36, "API error: rate limit exceeded (demo)" ),  // error
+	];
+
+	private const int DemoStageDurationMs = 30_000;
+
 	private void StartDemoTimer()
 	{
-		// Initialise with first demo values immediately
 		ApplyDemoStep();
 
 		m_RefreshTimer = new ThreadingTimer(
 			_ => System.Windows.Application.Current.Dispatcher.Invoke( AdvanceDemoStep ),
-			null, 2000, 2000 );
+			null, DemoStageDurationMs, DemoStageDurationMs );
 	}
 
 	private void AdvanceDemoStep()
 	{
-		m_DemoTickCount++;
-
-		// Advance date every DemoDateTickInterval ticks
-		if ( m_DemoTickCount % DemoDateTickInterval == 0 )
-		{
-			m_DemoDateIndex = ( m_DemoDateIndex + 1 ) % DemoDates.Length;
-		}
-
-		// Advance usage by 5 % per tick, wrapping 100 → 0
-		m_DemoUsageStep = ( m_DemoUsageStep + 1 ) % 21; // 0..20 → 0%..100%
-
+		m_DemoStageIndex = ( m_DemoStageIndex + 1 ) % s_DemoStages.Length;
 		ApplyDemoStep();
 	}
 
 	private void ApplyDemoStep()
 	{
-		var usagePercent = m_DemoUsageStep * 5.0;  // 0, 5, 10, …, 100
-		var limit = 300;
-		var used = (int) Math.Round( usagePercent / 100.0 * limit );
+		var (sessionPercent, weeklyPercent, errorMessage) = s_DemoStages[m_DemoStageIndex];
 
-		m_ViewModel.OverrideNow = DemoDates[m_DemoDateIndex];
-		m_ViewModel.LimitRequests = limit;
-		m_ViewModel.UsedRequests = used;
-		m_ViewModel.ResetAt = new DateTimeOffset( DemoDates[m_DemoDateIndex] ).AddMonths( 1 ).ToUniversalTime();
+		const int SessionCap = 50;
+		const int WeeklyCap  = 200;
+
+		m_ViewModel.UsagePercent  = sessionPercent;
+		m_ViewModel.SessionUsed   = (int)Math.Round( sessionPercent / 100.0 * SessionCap );
+		m_ViewModel.SessionLimit  = SessionCap;
+		m_ViewModel.SessionResetsAt = DateTimeOffset.Now.AddHours( 4 );
+		m_ViewModel.WeeklyPercent = weeklyPercent;
+		m_ViewModel.WeeklyUsed    = (int)Math.Round( weeklyPercent / 100.0 * WeeklyCap );
+		m_ViewModel.WeeklyLimit   = WeeklyCap;
+		m_ViewModel.WeeklyResetsAt = GetNextSunday();
 		m_ViewModel.LastUpdated = DateTime.Now;
-		m_ViewModel.ErrorMessage = null;
+		m_ViewModel.ErrorMessage = errorMessage;
 		m_ViewModel.IsDemoMode = true;
 
 		UpdateTrayIcon();
+	}
+
+	private static DateTimeOffset GetNextSunday()
+	{
+		var now = DateTime.Now;
+		int daysUntilSunday = ( (int)DayOfWeek.Sunday - (int)now.DayOfWeek + 7 ) % 7;
+		if ( daysUntilSunday == 0 ) daysUntilSunday = 7;
+		return new DateTimeOffset( now.Date.AddDays( daysUntilSunday ).AddHours( 15 ).AddMinutes( 59 ) );
 	}
 
 

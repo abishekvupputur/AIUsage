@@ -1,0 +1,57 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ master, master_new ]
+
+env:
+  PROJECT: CopilotUsage.csproj
+  OUTPUT:  ./publish
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT }}
+
+      - name: Publish (single-file, self-contained)
+        run: |
+          dotnet publish ${{ env.PROJECT }} `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            /p:PublishSingleFile=true `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            --output ${{ env.OUTPUT }}
+
+      - name: Create release tag
+        id: tag
+        run: |
+          $tag = "latest"
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Latest Build
+          make_latest: true        
+          body: |
+            Automated build from commit ${{ github.sha }}
+
+            Branch: `${{ github.ref_name }}`
+          files: ${{ env.OUTPUT }}/AIUsage.exe
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,152 +1,81 @@
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace CopilotUsage.Services;
 
-/// <summary>
-/// Implements the GitHub OAuth Device Flow.
-/// Register your own OAuth App at https://github.com/settings/applications/new
-/// and enable "Device Flow".
-/// </summary>
 internal sealed class GitHubAuthService
 {
-	private const string DeviceCodeUrl = "https://github.com/login/device/code";
-	private const string TokenUrl = "https://github.com/login/oauth/access_token";
-	private const string GrantType = "urn:ietf:params:oauth:grant-type:device_code";
-	private const string Scope = "read:user copilot";
+	// VS Code GitHub Copilot extension client ID (publicly known)
+	private const string ClientId = "Iv1.b507a08c87ecfe98";
 
-	/// <summary>
-	/// Built-in Client ID for the "Copilot Usage" GitHub OAuth App.
-	/// Used when no custom Client ID is configured in settings.
-	/// </summary>
-	private const string DefaultClientId = "Ov23liUmQyKcSK7753nt";
+	private static readonly HttpClient s_Http = new();
 
-	private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+	public record DeviceCodeInfo(
+		string DeviceCode,
+		string UserCode,
+		string VerificationUri,
+		int    ExpiresIn,
+		int    Interval );
 
-	private readonly HttpClient m_HttpClient;
-	private readonly string m_ClientId;
-
-
-	public GitHubAuthService( string? clientId )
+	public static async Task<DeviceCodeInfo> RequestDeviceCodeAsync()
 	{
-		m_ClientId = string.IsNullOrWhiteSpace( clientId ) ? DefaultClientId : clientId.Trim();
-		m_HttpClient = new HttpClient();
-		m_HttpClient.DefaultRequestHeaders.Accept.Add(
-			new MediaTypeWithQualityHeaderValue( "application/json" ) );
-		m_HttpClient.DefaultRequestHeaders.UserAgent.Add(
-			new ProductInfoHeaderValue( "CopilotUsageTray", "1.0" ) );
-	}
-
-
-	public async Task<DeviceCodeResponse> RequestDeviceCodeAsync( CancellationToken ct = default )
-	{
-		var content = new FormUrlEncodedContent( new Dictionary<string, string>
+		using var req = new HttpRequestMessage( HttpMethod.Post, "https://github.com/login/device/code" );
+		req.Headers.Add( "Accept", "application/json" );
+		req.Content = new FormUrlEncodedContent( new Dictionary<string, string>
 		{
-			["client_id"] = m_ClientId,
-			["scope"] = Scope,
+			["client_id"] = ClientId,
+			["scope"]     = "user",
 		} );
 
-		var response = await m_HttpClient.PostAsync( DeviceCodeUrl, content, ct ).ConfigureAwait( false );
-		var json = await response.Content.ReadAsStringAsync( ct ).ConfigureAwait( false );
+		var response = await s_Http.SendAsync( req ).ConfigureAwait( false );
+		var json     = await response.Content.ReadAsStringAsync().ConfigureAwait( false );
 
-		if ( !response.IsSuccessStatusCode )
-		{
-			throw new InvalidOperationException( ExtractError( json, response.StatusCode.ToString() ) );
-		}
+		using var doc = JsonDocument.Parse( json );
+		var root = doc.RootElement;
 
-		var result = JsonSerializer.Deserialize<DeviceCodeResponse>( json, JsonOptions );
-		if ( result == null || string.IsNullOrEmpty( result.DeviceCode ) )
-		{
-			throw new InvalidOperationException( "GitHub returned an unexpected response. Ensure 'Device Flow' is enabled for your OAuth App." );
-		}
-
-		return result;
+		return new DeviceCodeInfo(
+			DeviceCode:      root.GetProperty( "device_code" ).GetString()!,
+			UserCode:        root.GetProperty( "user_code" ).GetString()!,
+			VerificationUri: root.GetProperty( "verification_uri" ).GetString()!,
+			ExpiresIn:       root.GetProperty( "expires_in" ).GetInt32(),
+			Interval:        root.GetProperty( "interval" ).GetInt32() );
 	}
 
-
-	public async Task<string> PollForTokenAsync(
-		string deviceCode,
-		int pollIntervalSeconds,
-		Action<string>? onStatus = null,
-		CancellationToken ct = default )
+	public static async Task<string> PollForTokenAsync( string deviceCode, int intervalSeconds, CancellationToken ct )
 	{
-		while ( !ct.IsCancellationRequested )
-		{
-			await Task.Delay( TimeSpan.FromSeconds( pollIntervalSeconds ), ct ).ConfigureAwait( false );
+		var deadline = DateTime.UtcNow.AddMinutes( 15 );
 
-			var content = new FormUrlEncodedContent( new Dictionary<string, string>
+		while ( DateTime.UtcNow < deadline && !ct.IsCancellationRequested )
+		{
+			await Task.Delay( intervalSeconds * 1000, ct ).ConfigureAwait( false );
+
+			using var req = new HttpRequestMessage( HttpMethod.Post, "https://github.com/login/oauth/access_token" );
+			req.Headers.Add( "Accept", "application/json" );
+			req.Content = new FormUrlEncodedContent( new Dictionary<string, string>
 			{
-				["client_id"] = m_ClientId,
+				["client_id"]   = ClientId,
 				["device_code"] = deviceCode,
-				["grant_type"] = GrantType,
+				["grant_type"]  = "urn:ietf:params:oauth:grant-type:device_code",
 			} );
 
-			var response = await m_HttpClient.PostAsync( TokenUrl, content, ct ).ConfigureAwait( false );
-			var json = await response.Content.ReadAsStringAsync( ct ).ConfigureAwait( false );
+			var response = await s_Http.SendAsync( req, ct ).ConfigureAwait( false );
+			var json     = await response.Content.ReadAsStringAsync( ct ).ConfigureAwait( false );
 
-			if ( !response.IsSuccessStatusCode )
+			using var doc = JsonDocument.Parse( json );
+			var root = doc.RootElement;
+
+			if ( root.TryGetProperty( "access_token", out var tokenEl ) )
+				return tokenEl.GetString()!;
+
+			if ( root.TryGetProperty( "error", out var errorEl ) )
 			{
-				throw new InvalidOperationException( ExtractError( json, response.StatusCode.ToString() ) );
-			}
-
-			var poll = JsonSerializer.Deserialize<TokenPollResponse>( json, JsonOptions )
-				?? throw new InvalidOperationException( "Failed to deserialize token poll response." );
-
-			switch ( poll.Error )
-			{
-				case null or "":
-					if ( !string.IsNullOrEmpty( poll.AccessToken ) )
-					{
-						return poll.AccessToken;
-					}
-
-					break;
-				case "authorization_pending":
-					onStatus?.Invoke( "Waiting for authorization in browser…" );
-					break;
-				case "slow_down":
-					pollIntervalSeconds += 5;
-					onStatus?.Invoke( "Waiting for authorization in browser…" );
-					break;
-				case "expired_token":
-					throw new InvalidOperationException( "The device code has expired. Please try again." );
-				case "access_denied":
-					throw new InvalidOperationException( "Authorization was denied." );
-				default:
-					throw new InvalidOperationException( string.IsNullOrEmpty( poll.ErrorDescription )
-						? $"Authorization failed: {poll.Error}"
-						: poll.ErrorDescription );
+				var error = errorEl.GetString();
+				if ( error == "authorization_pending" ) continue;
+				if ( error == "slow_down" ) { intervalSeconds += 5; continue; }
+				throw new InvalidOperationException( $"GitHub auth failed: {error}" );
 			}
 		}
 
-		throw new OperationCanceledException( "Device flow polling was cancelled." );
-	}
-
-
-	private static string ExtractError( string json, string httpStatus )
-	{
-		try
-		{
-			var doc = JsonDocument.Parse( json );
-			if ( doc.RootElement.TryGetProperty( "error_description", out var d ) && !string.IsNullOrEmpty( d.GetString() ) )
-			{
-				return d.GetString()!;
-			}
-
-			if ( doc.RootElement.TryGetProperty( "error", out var err ) && !string.IsNullOrEmpty( err.GetString() ) )
-			{
-				return err.GetString()!;
-			}
-
-			if ( doc.RootElement.TryGetProperty( "message", out var m ) && !string.IsNullOrEmpty( m.GetString() ) )
-			{
-				return m.GetString()!;
-			}
-		}
-		catch { /* fall through */ }
-		return httpStatus is "404" or "NotFound"
-			? "GitHub returned 404. Verify your Client ID and that 'Device Flow' is enabled."
-			: $"GitHub returned HTTP {httpStatus}.";
+		throw new InvalidOperationException( "GitHub auth timed out." );
 	}
 }

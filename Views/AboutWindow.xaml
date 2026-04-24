@@ -1,41 +1,68 @@
 <Window x:Class="CopilotUsage.Views.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="About Copilot Usage"
+        Title="About AI Usage"
         ResizeMode="NoResize"
         SizeToContent="Height"
         Width="350"
         WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        Background="#1A1A1A"
+        Foreground="#EBEBEB">
 
-    <StackPanel Margin="24,20,24,20">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#D4845A"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#C07348"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
-        <!-- Copilot icon rendered as WPF vector from the app's DrawingImage resource -->
-        <Image Source="{StaticResource CopilotIcon}"
-               Width="64" Height="64" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+    <StackPanel Margin="24,24,24,24" TextElement.FontFamily="Segoe UI">
 
-        <TextBlock Text="Copilot Usage" FontSize="18" FontWeight="SemiBold"
-                   HorizontalAlignment="Center" Margin="0,0,0,4"/>
+        <!-- App icon (source set in code-behind) -->
+        <Image x:Name="AppIcon"
+               Width="64" Height="64" HorizontalAlignment="Center" Margin="0,0,0,16"
+               RenderOptions.BitmapScalingMode="HighQuality"/>
 
-        <TextBlock Text="Version 1.0" Foreground="#6C757D" FontSize="12"
-                   HorizontalAlignment="Center" Margin="0,0,0,12"/>
+        <TextBlock Text="AI Usage" FontSize="18" FontWeight="SemiBold"
+                   Foreground="#EBEBEB" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+
+        <TextBlock Text="Version 1.0" Foreground="#555555" FontSize="12"
+                   HorizontalAlignment="Center" Margin="0,0,0,14"/>
 
         <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center"
-                   Foreground="#495057" FontSize="12" Margin="0,0,0,12"
+                   Foreground="#888888" FontSize="12" Margin="0,0,0,14"
                    TextAlignment="Center">
-            Shows your GitHub Copilot monthly premium
-            request consumption in the system tray.
+            Shows usage for Claude and GitHub Copilot
+            in the system tray, refreshed automatically.
         </TextBlock>
 
-        <TextBlock HorizontalAlignment="Center" Foreground="#495057" FontSize="12" Margin="0,0,0,4">
-            Created by Tobias Wenzel
-            <LineBreak/>
-            <Hyperlink NavigateUri="mailto:tobias_wenzel@trimble.com"
-                       RequestNavigate="Hyperlink_RequestNavigate">tobias_wenzel@trimble.com</Hyperlink>
+        <TextBlock HorizontalAlignment="Center" Foreground="#888888" FontSize="12" Margin="0,0,0,4">
+            Created by TobiasW &amp; Abishek Narasimhan
         </TextBlock>
 
-        <TextBlock HorizontalAlignment="Center" FontSize="12" Margin="0,0,0,20">
+        <TextBlock HorizontalAlignment="Center" Foreground="#888888" FontSize="12" Margin="0,0,0,24">
+            <Run Text="Forked from: "/>
             <Hyperlink NavigateUri="https://github.com/TobiasW-T/CopilotUsage"
+                       Foreground="#D4845A"
                        RequestNavigate="Hyperlink_RequestNavigate">github.com/TobiasW-T/CopilotUsage</Hyperlink>
         </TextBlock>
 

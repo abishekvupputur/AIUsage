@@ -38,6 +38,7 @@ Generated*/
 # Misc
 temp/
 obj/**/temp/
+publish/
 
 # PowerShell
 *.ps1xml
@@ -50,6 +51,9 @@ local.settings.json
 
 # Visual Studio Code
 .vscode/
+
+# Claude Code local settings
+.claude/
 
 # Ignore local Copilot session folders if present (relative)
 .copilot/

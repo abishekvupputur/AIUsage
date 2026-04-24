@@ -1,0 +1,62 @@
+<Window x:Class="CopilotUsage.Views.RawJsonWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Raw API Response"
+        Width="600" Height="500"
+        MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        Background="#1A1A1A"
+        Foreground="#EBEBEB">
+
+    <DockPanel Margin="16" TextElement.FontFamily="Segoe UI">
+
+        <!-- Header -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <Button DockPanel.Dock="Right" Content="Copy" Width="60" Padding="0,4"
+                    Background="#D4845A" Foreground="#1A1A1A" BorderThickness="0"
+                    FontWeight="SemiBold" Cursor="Hand"
+                    Click="CopyButton_Click">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#C07348"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <TextBlock x:Name="TitleText" Text="rate_limit_status" FontSize="13"
+                       FontWeight="SemiBold" Foreground="#EBEBEB" VerticalAlignment="Center"/>
+        </DockPanel>
+
+        <!-- Loading / error banner -->
+        <Border x:Name="StatusBanner" DockPanel.Dock="Top"
+                Background="#2C1A1A" BorderBrush="#5A2A2A" BorderThickness="1"
+                CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
+                Visibility="Collapsed">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap"
+                       Foreground="#F47067" FontSize="11"/>
+        </Border>
+
+        <!-- JSON text area -->
+        <Border Background="#111111" BorderBrush="#333333" BorderThickness="1" CornerRadius="4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <TextBox x:Name="JsonTextBox"
+                         IsReadOnly="True"
+                         FontFamily="Consolas" FontSize="12"
+                         Foreground="#EBEBEB" Background="Transparent"
+                         BorderThickness="0" Padding="10"
+                         TextWrapping="NoWrap"
+                         VerticalAlignment="Top"
+                         Text="Fetching…"/>
+            </ScrollViewer>
+        </Border>
+
+    </DockPanel>
+</Window>

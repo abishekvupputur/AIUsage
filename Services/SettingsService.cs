@@ -7,7 +7,7 @@ namespace CopilotUsage.Services;
 internal static class SettingsService
 {
 	private static readonly string SettingsDirectory =
-		Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.ApplicationData ), "CopilotUsage" );
+		Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.ApplicationData ), "AIUsage" );
 
 	private static readonly string SettingsFilePath =
 		Path.Combine( SettingsDirectory, "settings.json" );

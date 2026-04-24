@@ -14,7 +14,7 @@ public partial class App : System.Windows.Application
 	{
 		base.OnStartup( e );
 
-		s_SingleInstanceMutex = new Mutex( true, "CopilotUsage_SingleInstance", out var isNewInstance );
+		s_SingleInstanceMutex = new Mutex( true, "AIUsage_SingleInstance", out var isNewInstance );
 		if ( !isNewInstance )
 		{
 			Shutdown();
@@ -27,8 +27,11 @@ public partial class App : System.Windows.Application
 		{
 			var settings = SettingsService.Load();
 
-			// If no token yet, show settings so the user can authorize
-			if ( string.IsNullOrWhiteSpace( settings.AccessToken ) )
+			bool isConfigured = settings.Provider == Models.UsageProvider.GitHubCopilot
+				? !string.IsNullOrWhiteSpace( settings.GitHubToken )
+				: !string.IsNullOrWhiteSpace( settings.SessionKey );
+
+			if ( !isConfigured )
 			{
 				var settingsWindow = new SettingsWindow();
 				if ( settingsWindow.ShowDialog() != true )
@@ -41,7 +44,7 @@ public partial class App : System.Windows.Application
 			StartupHelper.ApplyStartupSetting( SettingsService.Load().StartWithWindows );
 		}
 
-		m_TrayContext = new TrayApplicationContext( new GitHubCopilotService(), isDemoMode );
+		m_TrayContext = new TrayApplicationContext( isDemoMode );
 	}
 
 
