@@ -1,0 +1,39 @@
+# Copy this file to config.yaml and fill in your credentials.
+# config.yaml is git-ignored and will never be committed.
+
+mqtt:
+  enabled: false
+  host: "localhost"
+  port: 1883
+  username: ""
+  password: ""
+  topic_prefix: "aiusage"
+  publish_interval_seconds: 60
+
+web:
+  host: "127.0.0.1"
+  port: 8080
+
+providers:
+  claude:
+    enabled: true
+    session_key: ""          # claude.ai session cookie (sk-ant-sid02-…)
+    refresh_interval_minutes: 5
+
+  copilot:
+    enabled: false
+    github_token: ""         # GitHub PAT or set via OAuth in the web UI
+    refresh_interval_minutes: 15
+
+  openai:
+    enabled: false
+    access_token: ""         # ChatGPT session token or set via OAuth in the web UI
+    refresh_interval_minutes: 15
+
+  gemini:
+    enabled: false
+    client_id: ""            # Google OAuth client ID
+    client_secret: ""        # Google OAuth client secret
+    credentials_path: "%USERPROFILE%\\.gemini\\oauth_creds.json"
+    refresh_interval_minutes: 15
+    display_mode: "auto"     # auto | simplified | v2only | v3only | all

@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Usage Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --accent: #6366f1;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  .nav-tabs { border-bottom: 1px solid var(--border); }
+  .nav-tabs .nav-link { color: var(--muted); border: none; border-bottom: 2px solid transparent; padding: .5rem 1.2rem; }
+  .nav-tabs .nav-link.active { color: var(--text); border-bottom-color: var(--accent); background: none; }
+  .nav-tabs .nav-link:hover { color: var(--text); border-color: transparent; }
+  .provider-badge { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: .2rem .6rem; border-radius: 20px; }
+  .badge-claude  { background: #c084fc22; color: #c084fc; }
+  .badge-copilot { background: #38bdf822; color: #38bdf8; }
+  .badge-openai  { background: #4ade8022; color: #4ade80; }
+  .badge-gemini  { background: #fb923c22; color: #fb923c; }
+  .progress { height: 10px; background: #2a2d3a; border-radius: 6px; }
+  .progress-bar { border-radius: 6px; transition: width .5s ease; }
+  .bar-green  { background: var(--green); }
+  .bar-yellow { background: var(--yellow); }
+  .bar-red    { background: var(--red); }
+  .bar-label { font-size: .72rem; color: var(--muted); margin-bottom: .25rem; display: flex; justify-content: space-between; }
+  .error-text { color: var(--red); font-size: .8rem; }
+  .last-updated { font-size: .7rem; color: var(--muted); }
+  input.form-control, select.form-select {
+    background: #12141e; border: 1px solid var(--border); color: var(--text);
+    font-size: .85rem;
+  }
+  input.form-control:focus, select.form-select:focus {
+    background: #12141e; border-color: var(--accent); color: var(--text); box-shadow: none;
+  }
+  .form-label { font-size: .8rem; color: var(--muted); margin-bottom: .3rem; }
+  .section-header { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); }
+  .btn-primary:hover { background: #4f52d9; border-color: #4f52d9; }
+  .btn-outline-secondary { border-color: var(--border); color: var(--muted); }
+  .btn-outline-secondary:hover { background: var(--border); color: var(--text); border-color: var(--border); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-ok { background: var(--green); }
+  .dot-error { background: var(--red); }
+  .dot-loading { background: var(--yellow); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; }
+  .model-row { padding: .4rem 0; border-bottom: 1px solid var(--border); }
+  .model-row:last-child { border-bottom: none; }
+  .accordion-button { background: #1e2130; color: var(--text); font-weight: 600; }
+  .accordion-button:not(.collapsed) { background: #232636; color: var(--text); box-shadow: none; }
+  .accordion-button::after { filter: invert(1) brightness(.7); }
+  .accordion-item { background: var(--card); border: 1px solid var(--border); margin-bottom: .5rem; border-radius: 8px !important; overflow: hidden; }
+  .accordion-body { background: var(--card); }
+  .oauth-box { background: #12141e; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .code-chip { font-size: 1.6rem; font-family: monospace; font-weight: 700; letter-spacing: .25em; color: var(--text); background: #2a2d3a; padding: .4rem 1.2rem; border-radius: 8px; display: inline-block; }
+  .connected-badge { font-size: .75rem; background: #22c55e22; color: #22c55e; padding: .2rem .7rem; border-radius: 20px; font-weight: 600; }
+  .spinner-sm { width: 14px; height: 14px; border: 2px solid #ffffff44; border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="container-fluid px-4 py-3" style="max-width:1100px;margin:auto">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h5 class="mb-0 fw-bold">AI Usage Dashboard</h5>
+      <small class="text-muted" id="globalStatus">Loading…</small>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="pollNow()" id="refreshBtn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-4" id="mainTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabDashboard">Dashboard</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSettings">Settings</button></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ── Dashboard ───────────────────────────────────────────────── -->
+    <div class="tab-pane fade show active" id="tabDashboard">
+      <div id="providerCards" class="row g-3">
+        <div class="col-12 text-center text-muted py-5" id="emptyState">
+          No providers enabled or data not yet loaded. Hit <strong>Refresh</strong> or enable providers in Settings.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Settings ────────────────────────────────────────────────── -->
+    <div class="tab-pane fade" id="tabSettings">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="section-header">Configuration</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="importCsSettings()">Import from C# app</button>
+      </div>
+      <form id="configForm" onsubmit="saveConfig(event)">
+        <div class="accordion" id="configAccordion">
+
+          <!-- MQTT -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secMqtt">
+                MQTT
+              </button>
+            </h2>
+            <div id="secMqtt" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-12 d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input" id="mqtt_enabled" name="mqtt.enabled">
+                    <label class="form-label mb-0" for="mqtt_enabled">Enabled</label>
+                  </div>
+                  <div class="col-md-6"><label class="form-label">Broker Host</label><input class="form-control" id="mqtt_host" name="mqtt.host"></div>
+                  <div class="col-md-3"><label class="form-label">Port</label><input type="number" class="form-control" id="mqtt_port" name="mqtt.port"></div>
+                  <div class="col-md-3"><label class="form-label">Publish Interval (sec)</label><input type="number" class="form-control" id="mqtt_publish_interval" name="mqtt.publish_interval_seconds"></div>
+                  <div class="col-md-6"><label class="form-label">Username</label><input class="form-control" id="mqtt_username" name="mqtt.username"></div>
+                  <div class="col-md-6"><label class="form-label">Password</label><input type="password" class="form-control" id="mqtt_password" name="mqtt.password"></div>
+                  <div class="col-12"><label class="form-label">Topic Prefix</label><input class="form-control" id="mqtt_topic_prefix" name="mqtt.topic_prefix"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Web Server -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secWeb">
+                Web Server
+              </button>
+            </h2>
+            <div id="secWeb" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Host</label><input class="form-control" id="web_host" name="web.host"></div>
+                  <div class="col-md-6"><label class="form-label">Port</label><input type="number" class="form-control" id="web_port" name="web.port"></div>
+                  <div class="col-12"><small class="text-muted">Restart main.py to apply host/port changes.</small></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Claude -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secClaude">
+                <span class="provider-badge badge-claude me-2">Claude</span> Claude AI
+              </button>
+            </h2>
+            <div id="secClaude" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-12 d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input" id="claude_enabled" name="providers.claude.enabled">
+                    <label class="form-label mb-0" for="claude_enabled">Enabled</label>
+                  </div>
+                  <div class="col-12"><label class="form-label">Session Key (claude.ai cookie)</label><input type="password" class="form-control font-monospace" id="claude_session_key" name="providers.claude.session_key" placeholder="sk-ant-sid02-…"></div>
+                  <div class="col-md-6"><label class="form-label">Refresh Interval (minutes)</label><input type="number" class="form-control" id="claude_refresh" name="providers.claude.refresh_interval_minutes" min="1"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Copilot -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secCopilot">
+                <span class="provider-badge badge-copilot me-2">Copilot</span> GitHub Copilot
+                <span id="copilot_connected_badge" class="connected-badge ms-2" style="display:none">Connected</span>
+              </button>
+            </h2>
+            <div id="secCopilot" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-12 d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input" id="copilot_enabled" name="providers.copilot.enabled">
+                    <label class="form-label mb-0" for="copilot_enabled">Enabled</label>
+                  </div>
+
+                  <!-- OAuth connect box -->
+                  <div class="col-12">
+                    <div class="oauth-box" id="copilot_oauth_box">
+                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                          <div class="fw-semibold" style="font-size:.85rem">GitHub OAuth</div>
+                          <div class="text-muted" style="font-size:.75rem">Authenticate via GitHub device flow — no password needed</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="copilot_connect_btn" onclick="startGitHubOAuth()">Connect with GitHub</button>
+                      </div>
+                      <!-- step: show code -->
+                      <div id="copilot_oauth_step" style="display:none" class="mt-3 text-center">
+                        <div class="text-muted mb-1" style="font-size:.8rem">Go to <a id="copilot_verify_link" href="#" target="_blank" class="text-info"></a> and enter this code:</div>
+                        <div class="code-chip mb-2" id="copilot_user_code">—</div>
+                        <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
+                          <div class="text-muted" id="copilot_oauth_status" style="font-size:.75rem"><span class="spinner-sm me-1"></span> Waiting…</div>
+                          <button type="button" class="btn btn-sm btn-primary" id="copilot_check_btn" onclick="checkGitHubNow()" style="font-size:.72rem;padding:.2rem .6rem">I've authorized ↵</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Token <span class="text-muted">(auto-filled on connect)</span></label>
+                    <input type="password" class="form-control font-monospace" id="copilot_token" name="providers.copilot.github_token" placeholder="ghp_…">
+                  </div>
+                  <div class="col-md-6"><label class="form-label">Refresh Interval (minutes)</label><input type="number" class="form-control" id="copilot_refresh" name="providers.copilot.refresh_interval_minutes" min="1"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OpenAI -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secOpenAI">
+                <span class="provider-badge badge-openai me-2">OpenAI</span> OpenAI Codex
+                <span id="openai_connected_badge" class="connected-badge ms-2" style="display:none">Connected</span>
+              </button>
+            </h2>
+            <div id="secOpenAI" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-12 d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input" id="openai_enabled" name="providers.openai.enabled">
+                    <label class="form-label mb-0" for="openai_enabled">Enabled</label>
+                  </div>
+
+                  <!-- OAuth connect box -->
+                  <div class="col-12">
+                    <div class="oauth-box" id="openai_oauth_box">
+                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                          <div class="fw-semibold" style="font-size:.85rem">OpenAI OAuth</div>
+                          <div class="text-muted" style="font-size:.75rem">Authenticate via OpenAI device flow (Codex CLI protocol)</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="openai_connect_btn" onclick="startOpenAIOAuth()">Connect with OpenAI</button>
+                      </div>
+                      <!-- step: show code -->
+                      <div id="openai_oauth_step" style="display:none" class="mt-3 text-center">
+                        <div class="text-muted mb-1" style="font-size:.8rem">Go to <a id="openai_verify_link" href="#" target="_blank" class="text-info"></a> and enter this code:</div>
+                        <div class="code-chip mb-2" id="openai_user_code">—</div>
+                        <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
+                          <div class="text-muted" id="openai_oauth_status" style="font-size:.75rem"><span class="spinner-sm me-1"></span> Waiting…</div>
+                          <button type="button" class="btn btn-sm btn-primary" id="openai_check_btn" onclick="checkOpenAINow()" style="font-size:.72rem;padding:.2rem .6rem">I've authorized ↵</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Access Token <span class="text-muted">(auto-filled on connect)</span></label>
+                    <input type="password" class="form-control font-monospace" id="openai_token" name="providers.openai.access_token">
+                  </div>
+                  <div class="col-md-6"><label class="form-label">Refresh Interval (minutes)</label><input type="number" class="form-control" id="openai_refresh" name="providers.openai.refresh_interval_minutes" min="1"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gemini -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secGemini">
+                <span class="provider-badge badge-gemini me-2">Gemini</span> Google Gemini
+              </button>
+            </h2>
+            <div id="secGemini" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-12 d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input" id="gemini_enabled" name="providers.gemini.enabled">
+                    <label class="form-label mb-0" for="gemini_enabled">Enabled</label>
+                  </div>
+                  <div class="col-md-6"><label class="form-label">Client ID</label><input class="form-control" id="gemini_client_id" name="providers.gemini.client_id"></div>
+                  <div class="col-md-6"><label class="form-label">Client Secret</label><input type="password" class="form-control" id="gemini_client_secret" name="providers.gemini.client_secret"></div>
+                  <div class="col-12"><label class="form-label">OAuth Credentials Path</label><input class="form-control font-monospace" id="gemini_creds_path" name="providers.gemini.credentials_path"></div>
+                  <div class="col-md-6"><label class="form-label">Refresh Interval (minutes)</label><input type="number" class="form-control" id="gemini_refresh" name="providers.gemini.refresh_interval_minutes" min="1"></div>
+                  <div class="col-md-6">
+                    <label class="form-label">Display Mode</label>
+                    <select class="form-select" id="gemini_display_mode" name="providers.gemini.display_mode">
+                      <option value="auto">Auto</option>
+                      <option value="simplified">Simplified</option>
+                      <option value="v2only">Gemini 2 Only</option>
+                      <option value="v3only">Gemini 3 Only</option>
+                      <option value="all">All</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- accordion -->
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary">Save Configuration</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="loadSettings()">Reset</button>
+        </div>
+      </form>
+    </div>
+
+  </div><!-- tab-content -->
+</div><!-- container -->
+
+<!-- Toast -->
+<div class="toast-container">
+  <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert" data-bs-autohide="true" data-bs-delay="3000">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMsg">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Utilities ──────────────────────────────────────────────────────────────────
+
+function colorClass(pct) {
+  if (pct >= 80) return 'bar-red';
+  if (pct >= 60) return 'bar-yellow';
+  return 'bar-green';
+}
+
+function fmtPct(v) { return (v ?? 0).toFixed(1) + '%'; }
+
+const BERLIN = 'Europe/Berlin';
+
+function fmtReset(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const diff = d - Date.now();
+  if (diff <= 0) return 'Resetting soon';
+  const totalMins = Math.floor(diff / 60000);
+  if (totalMins < 1) return 'Resets in < 1 min';
+  if (totalMins < 1440) {
+    const h = Math.floor(totalMins / 60), m = totalMins % 60;
+    if (h === 0) return `Resets in ${m} min`;
+    return m === 0 ? `Resets in ${h} hr` : `Resets in ${h} hr ${m} min`;
+  }
+  // ≥ 24 h — absolute Berlin date + time
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: BERLIN, day: '2-digit', month: 'short',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const g = t => parts.find(p => p.type === t)?.value ?? '';
+  return `Resets ${g('day')} ${g('month')}, ${g('hour')}:${g('minute')}`;
+}
+
+function progressBar(label, pct, used, limit, resetAt) {
+  const cls = colorClass(pct);
+  const summary = (used != null && limit != null)
+    ? `${used} / ${limit} (${fmtPct(pct)})`
+    : fmtPct(pct);
+  const resetStr = resetAt
+    ? `<span class="ms-2 reset-label" data-reset-at="${resetAt}">${fmtReset(resetAt)}</span>`
+    : '';
+  return `
+    <div class="mb-3">
+      <div class="bar-label">
+        <span>${label}</span>
+        <span>${summary}${resetStr}</span>
+      </div>
+      <div class="progress">
+        <div class="progress-bar ${cls}" style="width:${Math.min(pct,100)}%"></div>
+      </div>
+    </div>`;
+}
+
+function showToast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.className = `toast align-items-center text-bg-${type} border-0`;
+  document.getElementById('toastMsg').textContent = msg;
+  bootstrap.Toast.getOrCreateInstance(el).show();
+}
+
+// ── Dashboard rendering ────────────────────────────────────────────────────────
+
+function renderDashboard(data) {
+  const container = document.getElementById('providerCards');
+  const empty = document.getElementById('emptyState');
+  const entries = Object.entries(data);
+
+  if (entries.length === 0) {
+    empty.style.display = '';
+    container.innerHTML = '';
+    container.appendChild(empty);
+    return;
+  }
+
+  let html = '';
+  for (const [provider, pdata] of entries) {
+    html += renderProviderCard(provider, pdata);
+  }
+  container.innerHTML = html;
+
+  const ts = entries.map(([, d]) => d.last_updated).filter(Boolean).sort().pop();
+  document.getElementById('globalStatus').textContent = ts
+    ? 'Last updated ' + new Date(ts).toLocaleTimeString()
+    : 'Updated';
+}
+
+function renderProviderCard(provider, data) {
+  const badgeClass = `badge-${provider}`;
+  const providerName = { claude: 'Claude AI', copilot: 'GitHub Copilot', openai: 'OpenAI Codex', gemini: 'Google Gemini' }[provider] ?? provider;
+
+  let statusDot = `<span class="status-dot ${data.error ? 'dot-error' : 'dot-ok'}"></span>`;
+  let body = '';
+
+  if (data.error) {
+    body = `<div class="error-text mt-2">⚠ ${data.error}</div>`;
+  } else if (provider === 'gemini') {
+    body = renderGeminiBuckets(data.buckets ?? []);
+  } else {
+    if (data.session_percent != null || data.session_used != null) {
+      const label = provider === 'copilot' ? 'Monthly interactions' : provider === 'openai' ? 'Weekly rate limit' : 'Current session';
+      body += progressBar(label, data.session_percent ?? 0, data.session_used, data.session_limit, data.session_resets_at);
+    }
+    if (data.weekly_percent > 0 || data.weekly_used != null) {
+      body += progressBar('Weekly usage', data.weekly_percent ?? 0, data.weekly_used, data.weekly_limit, data.weekly_resets_at);
+    }
+    if (data.extra_enabled) {
+      body += progressBar('Extra (pay-per-use)', data.extra_percent ?? 0,
+        data.extra_used_eur != null ? `€${data.extra_used_eur.toFixed(2)}` : null,
+        data.extra_limit_eur != null ? `€${data.extra_limit_eur.toFixed(2)}` : null, null);
+    }
+  }
+
+  const lastUpdated = data.last_updated ? `<div class="last-updated mt-2">Updated ${new Date(data.last_updated).toLocaleTimeString()}</div>` : '';
+
+  return `
+    <div class="col-md-6 col-xl-4">
+      <div class="card p-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          ${statusDot}
+          <span class="provider-badge ${badgeClass}">${provider}</span>
+          <span class="fw-semibold">${providerName}</span>
+        </div>
+        ${body || '<div class="text-muted" style="font-size:.8rem">No data</div>'}
+        ${lastUpdated}
+      </div>
+    </div>`;
+}
+
+function renderGeminiBuckets(buckets) {
+  if (!buckets.length) return '<div class="text-muted" style="font-size:.8rem">No quota data</div>';
+  return buckets.map(b => {
+    const pct = b.used_percent ?? 0;
+    const cls = colorClass(pct);
+    const resetTag = b.reset_time
+      ? `· <span class="reset-label" data-reset-at="${b.reset_time}">${fmtReset(b.reset_time)}</span>`
+      : '';
+    return `
+      <div class="model-row">
+        <div class="bar-label">
+          <span>${b.model_id}</span>
+          <span>${fmtPct(pct)} ${resetTag}</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar ${cls}" style="width:${Math.min(pct,100)}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Data loading ───────────────────────────────────────────────────────────────
+
+async function loadData() {
+  try {
+    const res = await fetch('/api/data');
+    const data = await res.json();
+    renderDashboard(data);
+  } catch (e) {
+    document.getElementById('globalStatus').textContent = 'Error loading data: ' + e.message;
+  }
+}
+
+async function pollNow() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = '↻ Polling…';
+  try {
+    await fetch('/api/poll', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 2000));
+    await loadData();
+  } catch (e) {
+    showToast('Poll failed: ' + e.message, 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Refresh';
+  }
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+
+async function loadSettings() {
+  const res = await fetch('/api/config');
+  const cfg = await res.json();
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = !!val; else el.value = val ?? ''; } };
+
+  set('mqtt_enabled',          cfg.mqtt?.enabled);
+  set('mqtt_host',             cfg.mqtt?.host ?? 'localhost');
+  set('mqtt_port',             cfg.mqtt?.port ?? 1883);
+  set('mqtt_publish_interval', cfg.mqtt?.publish_interval_seconds ?? 60);
+  set('mqtt_username',         cfg.mqtt?.username ?? '');
+  set('mqtt_password',         cfg.mqtt?.password ?? '');
+  set('mqtt_topic_prefix',     cfg.mqtt?.topic_prefix ?? 'aiusage');
+
+  set('web_host', cfg.web?.host ?? '127.0.0.1');
+  set('web_port', cfg.web?.port ?? 8080);
+
+  const p = cfg.providers ?? {};
+  set('claude_enabled',     p.claude?.enabled);
+  set('claude_session_key', p.claude?.session_key ?? '');
+  set('claude_refresh',     p.claude?.refresh_interval_minutes ?? 5);
+
+  set('copilot_enabled', p.copilot?.enabled);
+  set('copilot_token',   p.copilot?.github_token ?? '');
+  set('copilot_refresh', p.copilot?.refresh_interval_minutes ?? 15);
+  document.getElementById('copilot_connected_badge').style.display = p.copilot?.github_token ? '' : 'none';
+
+  set('openai_enabled', p.openai?.enabled);
+  set('openai_token',   p.openai?.access_token ?? '');
+  set('openai_refresh', p.openai?.refresh_interval_minutes ?? 15);
+  document.getElementById('openai_connected_badge').style.display = p.openai?.access_token ? '' : 'none';
+
+  set('gemini_enabled',       p.gemini?.enabled);
+  set('gemini_client_id',     p.gemini?.client_id ?? '');
+  set('gemini_client_secret', p.gemini?.client_secret ?? '');
+  set('gemini_creds_path',    p.gemini?.credentials_path ?? '');
+  set('gemini_refresh',       p.gemini?.refresh_interval_minutes ?? 15);
+  set('gemini_display_mode',  p.gemini?.display_mode ?? 'auto');
+}
+
+async function saveConfig(e) {
+  e.preventDefault();
+  const get = id => document.getElementById(id);
+  const val = id => get(id)?.value ?? '';
+  const chk = id => get(id)?.checked ?? false;
+  const num = id => parseInt(val(id)) || 0;
+
+  const config = {
+    mqtt: {
+      enabled:                  chk('mqtt_enabled'),
+      host:                     val('mqtt_host'),
+      port:                     num('mqtt_port'),
+      publish_interval_seconds: num('mqtt_publish_interval'),
+      username:                 val('mqtt_username'),
+      password:                 val('mqtt_password'),
+      topic_prefix:             val('mqtt_topic_prefix'),
+    },
+    web: {
+      host: val('web_host'),
+      port: num('web_port'),
+    },
+    providers: {
+      claude: {
+        enabled:                  chk('claude_enabled'),
+        session_key:              val('claude_session_key'),
+        refresh_interval_minutes: num('claude_refresh'),
+      },
+      copilot: {
+        enabled:                  chk('copilot_enabled'),
+        github_token:             val('copilot_token'),
+        refresh_interval_minutes: num('copilot_refresh'),
+      },
+      openai: {
+        enabled:                  chk('openai_enabled'),
+        access_token:             val('openai_token'),
+        refresh_interval_minutes: num('openai_refresh'),
+      },
+      gemini: {
+        enabled:                  chk('gemini_enabled'),
+        client_id:                val('gemini_client_id'),
+        client_secret:            val('gemini_client_secret'),
+        credentials_path:         val('gemini_creds_path'),
+        refresh_interval_minutes: num('gemini_refresh'),
+        display_mode:             val('gemini_display_mode'),
+      },
+    },
+  };
+
+  try {
+    const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+    const result = await res.json();
+    if (result.ok) showToast('Configuration saved');
+    else showToast('Save failed: ' + result.error, 'danger');
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'danger');
+  }
+}
+
+async function importCsSettings() {
+  try {
+    const res = await fetch('/api/import-cs-settings');
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`Imported from C# app: ${data.imported?.join(', ') || 'nothing new'}`);
+      await loadSettings();
+    } else {
+      showToast(data.error, 'warning');
+    }
+  } catch (e) {
+    showToast('Import failed: ' + e.message, 'danger');
+  }
+}
+
+// ── OAuth ──────────────────────────────────────────────────────────────────────
+
+// Use setTimeout chain — never overlap polls, never race setInterval + manual button
+let _ghActive = false, _ghDeviceCode = null, _ghInterval = 5000, _ghPollTimer = null;
+let _oaiActive = false, _oaiDeviceCode = null, _oaiUserCode = null, _oaiInterval = 5000, _oaiPollTimer = null;
+
+async function startGitHubOAuth() {
+  _ghActive = false; clearTimeout(_ghPollTimer);
+  const btn = document.getElementById('copilot_connect_btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm me-1"></span> Starting…';
+  try {
+    const res = await fetch('/api/auth/github/start', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) {
+      showToast('GitHub OAuth failed: ' + data.error, 'danger');
+      btn.disabled = false; btn.textContent = 'Connect with GitHub'; return;
+    }
+    _ghDeviceCode = data.device_code;
+    _ghInterval   = Math.max((data.interval || 5), 5) * 1000;
+    _ghActive     = true;
+    document.getElementById('copilot_verify_link').href = data.verification_uri;
+    document.getElementById('copilot_verify_link').textContent = data.verification_uri;
+    document.getElementById('copilot_user_code').textContent = data.user_code;
+    document.getElementById('copilot_oauth_step').style.display = '';
+    btn.disabled = false; btn.textContent = 'Cancel';
+    btn.onclick = () => cancelOAuth('github');
+    _ghPollTimer = setTimeout(_runGhPoll, _ghInterval);
+  } catch (e) {
+    showToast('GitHub OAuth error: ' + e.message, 'danger');
+    btn.disabled = false; btn.textContent = 'Connect with GitHub';
+  }
+}
+
+async function checkGitHubNow() {
+  if (!_ghDeviceCode) return;
+  clearTimeout(_ghPollTimer); _ghActive = false;
+  document.getElementById('copilot_check_btn').disabled = true;
+  await _runGhPoll();
+  document.getElementById('copilot_check_btn').disabled = false;
+}
+
+async function _runGhPoll() {
+  if (!_ghDeviceCode) return;
+  const statusEl = document.getElementById('copilot_oauth_status');
+  try {
+    const res = await fetch('/api/auth/github/poll', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ device_code: _ghDeviceCode }),
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      _ghActive = false;
+      document.getElementById('copilot_token').value = data.token;
+      document.getElementById('copilot_oauth_step').style.display = 'none';
+      document.getElementById('copilot_connected_badge').style.display = '';
+      const btn = document.getElementById('copilot_connect_btn');
+      btn.disabled = false; btn.textContent = 'Reconnect'; btn.onclick = () => startGitHubOAuth();
+      document.getElementById('copilot_enabled').checked = true;
+      showToast('GitHub connected! Save config to persist.');
+    } else if (data.status === 'error') {
+      _ghActive = false;
+      statusEl.innerHTML = '⚠ ' + (data.error || 'Auth failed');
+      const btn = document.getElementById('copilot_connect_btn');
+      btn.disabled = false; btn.textContent = 'Retry'; btn.onclick = () => startGitHubOAuth();
+    } else {
+      if (data.slow_down) _ghInterval += 5000;
+      _ghActive = true;
+      statusEl.innerHTML = `<span class="spinner-sm me-1"></span> Waiting… (poll in ${_ghInterval/1000}s)`;
+      _ghPollTimer = setTimeout(_runGhPoll, _ghInterval);
+    }
+  } catch (e) {
+    statusEl.innerHTML = '⚠ Network error: ' + e.message;
+    _ghActive = true;
+    _ghPollTimer = setTimeout(_runGhPoll, _ghInterval);
+  }
+}
+
+async function startOpenAIOAuth() {
+  _oaiActive = false; clearTimeout(_oaiPollTimer);
+  const btn = document.getElementById('openai_connect_btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm me-1"></span> Starting…';
+  try {
+    const res = await fetch('/api/auth/openai/start', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) {
+      showToast('OpenAI OAuth failed: ' + data.error, 'danger');
+      btn.disabled = false; btn.textContent = 'Connect with OpenAI'; return;
+    }
+    _oaiDeviceCode = data.device_code;
+    _oaiUserCode   = data.user_code;
+    _oaiInterval   = Math.max((data.interval || 5), 5) * 1000;
+    _oaiActive     = true;
+    document.getElementById('openai_verify_link').href = data.verification_uri;
+    document.getElementById('openai_verify_link').textContent = data.verification_uri;
+    document.getElementById('openai_user_code').textContent = data.user_code;
+    document.getElementById('openai_oauth_step').style.display = '';
+    btn.disabled = false; btn.textContent = 'Cancel';
+    btn.onclick = () => cancelOAuth('openai');
+    _oaiPollTimer = setTimeout(_runOaiPoll, _oaiInterval);
+  } catch (e) {
+    showToast('OpenAI OAuth error: ' + e.message, 'danger');
+    btn.disabled = false; btn.textContent = 'Connect with OpenAI';
+  }
+}
+
+async function checkOpenAINow() {
+  if (!_oaiDeviceCode) return;
+  clearTimeout(_oaiPollTimer); _oaiActive = false;
+  document.getElementById('openai_check_btn').disabled = true;
+  await _runOaiPoll();
+  document.getElementById('openai_check_btn').disabled = false;
+}
+
+async function _runOaiPoll() {
+  if (!_oaiDeviceCode) return;
+  const statusEl = document.getElementById('openai_oauth_status');
+  try {
+    const res = await fetch('/api/auth/openai/poll', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ device_code: _oaiDeviceCode, user_code: _oaiUserCode }),
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      _oaiActive = false;
+      document.getElementById('openai_token').value = data.access_token || '';
+      document.getElementById('openai_oauth_step').style.display = 'none';
+      document.getElementById('openai_connected_badge').style.display = '';
+      const btn = document.getElementById('openai_connect_btn');
+      btn.disabled = false; btn.textContent = 'Reconnect'; btn.onclick = () => startOpenAIOAuth();
+      document.getElementById('openai_enabled').checked = true;
+      showToast('OpenAI connected! Save config to persist.');
+    } else if (data.status === 'error') {
+      _oaiActive = false;
+      statusEl.innerHTML = '⚠ ' + (data.error || 'Auth failed');
+      const btn = document.getElementById('openai_connect_btn');
+      btn.disabled = false; btn.textContent = 'Retry'; btn.onclick = () => startOpenAIOAuth();
+    } else {
+      _oaiActive = true;
+      statusEl.innerHTML = `<span class="spinner-sm me-1"></span> Waiting… (poll in ${_oaiInterval/1000}s)`;
+      _oaiPollTimer = setTimeout(_runOaiPoll, _oaiInterval);
+    }
+  } catch (e) {
+    statusEl.innerHTML = '⚠ Network error: ' + e.message;
+    _oaiActive = true;
+    _oaiPollTimer = setTimeout(_runOaiPoll, _oaiInterval);
+  }
+}
+
+function cancelOAuth(provider) {
+  if (provider === 'github') {
+    _ghActive = false; clearTimeout(_ghPollTimer); _ghDeviceCode = null;
+    document.getElementById('copilot_oauth_step').style.display = 'none';
+    const btn = document.getElementById('copilot_connect_btn');
+    btn.disabled = false; btn.textContent = 'Connect with GitHub'; btn.onclick = () => startGitHubOAuth();
+  } else {
+    _oaiActive = false; clearTimeout(_oaiPollTimer); _oaiDeviceCode = null; _oaiUserCode = null;
+    document.getElementById('openai_oauth_step').style.display = 'none';
+    const btn = document.getElementById('openai_connect_btn');
+    btn.disabled = false; btn.textContent = 'Connect with OpenAI'; btn.onclick = () => startOpenAIOAuth();
+  }
+}
+
+// ── Reset ticker ──────────────────────────────────────────────────────────────
+
+let _resetTickTimer = null;
+
+function tickResets() {
+  const els = document.querySelectorAll('[data-reset-at]');
+  let minDiffMs = Infinity;
+  els.forEach(el => {
+    const iso = el.dataset.resetAt;
+    el.textContent = fmtReset(iso);
+    const diff = new Date(iso) - Date.now();
+    if (diff > 0 && diff < minDiffMs) minDiffMs = diff;
+  });
+  // pace: < 2 min → 1s, < 15 min → 10s, else 30s
+  const delay = minDiffMs < 120_000 ? 1000 : minDiffMs < 900_000 ? 10_000 : 30_000;
+  _resetTickTimer = setTimeout(tickResets, delay);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  loadSettings();
+  setInterval(loadData, 30000);
+  tickResets();
+});
+</script>
+</body>
+</html>
