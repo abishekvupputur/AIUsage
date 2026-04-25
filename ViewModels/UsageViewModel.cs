@@ -380,6 +380,8 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			OnPropertyChanged( nameof( CopilotCreditsSummary ) );
 		OnPropertyChanged( nameof( ShowStandardBars ) );
 		OnPropertyChanged( nameof( ShowGeminiBuckets ) );
+		OnPropertyChanged( nameof( ShowGeminiSingleList ) );
+		OnPropertyChanged( nameof( ShowGeminiTabs ) );
 		}
 	}
 
@@ -391,9 +393,17 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	};
 
 	public string SessionBarLabel => m_Provider == UsageProvider.GitHubCopilot ? "Monthly interactions" : "Current session";
-	public bool   ShowWeeklyBar   => m_Provider != UsageProvider.Gemini;
-	public bool   ShowStandardBars  => m_Provider != UsageProvider.Gemini;
-	public bool   ShowGeminiBuckets => m_Provider == UsageProvider.Gemini && m_GeminiBuckets.Count > 0;
+	public bool ShowWeeklyBar      => m_Provider != UsageProvider.Gemini;
+	public bool ShowStandardBars   => m_Provider != UsageProvider.Gemini;
+	public bool ShowGeminiBuckets  => m_Provider == UsageProvider.Gemini && m_GeminiBuckets.Count > 0;
+	public bool ShowGeminiSingleList => ShowGeminiBuckets && m_GeminiBuckets.Count <= 4;
+	public bool ShowGeminiTabs       => ShowGeminiBuckets && m_GeminiBuckets.Count >  4;
+
+	public List<GeminiQuotaBucket> GeminiV2Buckets =>
+		m_GeminiBuckets.Where( b => b.ModelId.StartsWith( "gemini-2", StringComparison.OrdinalIgnoreCase ) ).ToList();
+
+	public List<GeminiQuotaBucket> GeminiV3Buckets =>
+		m_GeminiBuckets.Where( b => b.ModelId.StartsWith( "gemini-3", StringComparison.OrdinalIgnoreCase ) ).ToList();
 
 	public List<GeminiQuotaBucket> GeminiBuckets
 	{
@@ -403,6 +413,10 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			m_GeminiBuckets = value;
 			OnPropertyChanged();
 			OnPropertyChanged( nameof( ShowGeminiBuckets ) );
+			OnPropertyChanged( nameof( ShowGeminiSingleList ) );
+			OnPropertyChanged( nameof( ShowGeminiTabs ) );
+			OnPropertyChanged( nameof( GeminiV2Buckets ) );
+			OnPropertyChanged( nameof( GeminiV3Buckets ) );
 		}
 	}
 

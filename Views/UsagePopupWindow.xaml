@@ -67,6 +67,98 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Gemini bucket row template (shared between single list and tabs) -->
+        <DataTemplate x:Key="GeminiBucketTemplate">
+            <StackPanel Margin="0,0,0,10">
+                <DockPanel Margin="0,0,0,4">
+                    <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="#C0C0C0"
+                               VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                    <TextBlock Text="{Binding ResetTimeSummary}" FontSize="10" Foreground="#888888"
+                               HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                </DockPanel>
+                <ProgressBar Value="{Binding UsedPercent, Mode=OneWay}" Maximum="100" Height="6"
+                             Background="#2E2E2E" BorderThickness="0">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar" BasedOn="{StaticResource UsageProgressBarStyle}">
+                            <Setter Property="Foreground" Value="#3FB950"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ColorZone}" Value="Yellow">
+                                    <Setter Property="Foreground" Value="#D4A72C"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ColorZone}" Value="Red">
+                                    <Setter Property="Foreground" Value="#F47067"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
+                <TextBlock Text="{Binding RemainingPercentSummary}" FontSize="11" Foreground="#AAAAAA"
+                           Margin="0,3,0,0" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Dark TabControl -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TabPanel Grid.Row="0" IsItemsHost="True" Background="Transparent" Margin="0,0,0,8"/>
+                            <Border Grid.Row="1" Background="Transparent">
+                                <ContentPresenter ContentSource="SelectedContent"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark TabItem -->
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#666666"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Tab" Background="{TemplateBinding Background}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}"
+                                Margin="{TemplateBinding Margin}">
+                            <TextBlock x:Name="Lbl" Text="{TemplateBinding Header}"
+                                       FontFamily="{TemplateBinding FontFamily}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Tab" Property="Background" Value="#D4845A"/>
+                                <Setter TargetName="Lbl" Property="Foreground" Value="#1A1A1A"/>
+                                <Setter TargetName="Lbl" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="False"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Tab" Property="Background" Value="#2E2E2E"/>
+                                <Setter TargetName="Lbl" Property="Foreground" Value="#EBEBEB"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Provider toggle: active -->
         <Style x:Key="ProvBtnActiveStyle" TargetType="Button">
             <Setter Property="Background" Value="#D4845A"/>
@@ -217,40 +309,22 @@
                 <!-- Bars column -->
                 <StackPanel Grid.Column="2">
 
-                    <!-- Gemini model quota buckets — one bar per model -->
+                    <!-- Gemini: single list (≤ 4 models) -->
                     <ItemsControl ItemsSource="{Binding GeminiBuckets}"
-                                  Visibility="{Binding ShowGeminiBuckets, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,0,0,10">
-                                    <DockPanel Margin="0,0,0,4">
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="#C0C0C0"
-                                                   VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                                        <TextBlock Text="{Binding ResetTimeSummary}" FontSize="10" Foreground="#888888"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                                    </DockPanel>
-                                    <ProgressBar Value="{Binding UsedPercent, Mode=OneWay}" Maximum="100" Height="6"
-                                                 Background="#2E2E2E" BorderThickness="0">
-                                        <ProgressBar.Style>
-                                            <Style TargetType="ProgressBar" BasedOn="{StaticResource UsageProgressBarStyle}">
-                                                <Setter Property="Foreground" Value="#3FB950"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding ColorZone}" Value="Yellow">
-                                                        <Setter Property="Foreground" Value="#D4A72C"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding ColorZone}" Value="Red">
-                                                        <Setter Property="Foreground" Value="#F47067"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ProgressBar.Style>
-                                    </ProgressBar>
-                                    <TextBlock Text="{Binding RemainingPercentSummary}" FontSize="11" Foreground="#AAAAAA"
-                                               Margin="0,3,0,0" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                  ItemTemplate="{StaticResource GeminiBucketTemplate}"
+                                  Visibility="{Binding ShowGeminiSingleList, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                    <!-- Gemini: tabbed view (> 4 models) -->
+                    <TabControl Visibility="{Binding ShowGeminiTabs, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TabItem Header="Gemini 2.x">
+                            <ItemsControl ItemsSource="{Binding GeminiV2Buckets}"
+                                          ItemTemplate="{StaticResource GeminiBucketTemplate}"/>
+                        </TabItem>
+                        <TabItem Header="Gemini 3.x">
+                            <ItemsControl ItemsSource="{Binding GeminiV3Buckets}"
+                                          ItemTemplate="{StaticResource GeminiBucketTemplate}"/>
+                        </TabItem>
+                    </TabControl>
 
                     <!-- Standard bars (Claude / GitHub Copilot) — hidden for Gemini -->
                     <StackPanel Visibility="{Binding ShowStandardBars, Converter={StaticResource BoolToVisibilityConverter}}">
