@@ -11,6 +11,12 @@ A lightweight Windows system tray app that shows quota usage for Claude, GitHub 
 - Clicking a provider tab forces an immediate refresh for that provider
 - Manual refresh button in the popup header
 
+## Screenshots
+
+| System Tray | Usage Popup | Settings |
+|---|---|---|
+| ![System Tray](docs/screenshots/usage_icon.png) | ![Usage Popup](docs/screenshots/copilot_usage.png) | ![Settings](docs/screenshots/copilot_settings.png) |
+
 ## Providers
 
 | Provider | Auth method | What is tracked |
@@ -45,6 +51,21 @@ Configurable in Settings → Gemini tab:
 | **All models** | Always shows all models grouped in Gemini 2.x / 3.x tabs |
 | **Gemini 2.x only** | Shows only 2.x models |
 | **Gemini 3.x only** | Shows only 3.x models |
+
+## Cat Animations
+
+The app features an animated cat in the popup that reacts to your current usage or "pace" (for monthly/weekly limits):
+
+| State | Animation | Meaning |
+|---|---|---|
+| **strolling** | 🐈🚶 | Normal usage; on track with your quota. |
+| **attention** | 🐈❗ | Very low usage (under 10%) or significantly under pace. |
+| **meow** | 🐈💬 | Moderate usage (over 60%) or slightly ahead of pace. |
+| **tired** | 🐈😫 | High usage (over 80%) or burning through quota too fast. |
+| **sleeping** | 🐈💤 | Limit reached (100%); time to take a break! |
+| **error** | 🐈❌ | Something went wrong fetching usage data. |
+
+For GitHub Copilot and OpenAI, the cat is "pace-aware" — it looks at how much of the billing cycle has elapsed and compares it to your usage.
 
 ## Build from source
 
