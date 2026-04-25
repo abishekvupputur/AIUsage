@@ -46,16 +46,23 @@ public partial class SettingsWindow : Window
 
 		// Claude key
 		SessionKeyBox.Text = settings.SessionKey;
-		if ( !string.IsNullOrWhiteSpace( settings.SessionKey ) )
+		var hasClaudeKey = !string.IsNullOrWhiteSpace( settings.SessionKey );
+		if ( hasClaudeKey )
 			SetClaudeStatus( "✓ Session key is saved. Click Test to verify it still works.", WpfBrushes.Green );
+		ClaudeEnableCheck.IsEnabled = hasClaudeKey;
+		ClaudeEnableCheck.IsChecked = hasClaudeKey && settings.SelectedProviders.Contains( UsageProvider.Claude );
 
 		// GitHub token
-		if ( !string.IsNullOrWhiteSpace( settings.GitHubToken ) )
-			ShowCopilotConnected();
+		var hasCopilot = !string.IsNullOrWhiteSpace( settings.GitHubToken );
+		if ( hasCopilot ) ShowCopilotConnected();
+		CopilotEnableCheck.IsEnabled = hasCopilot;
+		CopilotEnableCheck.IsChecked = hasCopilot && settings.SelectedProviders.Contains( UsageProvider.GitHubCopilot );
 
 		// OpenAI token
-		if ( !string.IsNullOrWhiteSpace( settings.OpenAIToken ) )
-			ShowOpenAIConnected();
+		var hasOpenAI = !string.IsNullOrWhiteSpace( settings.OpenAIToken );
+		if ( hasOpenAI ) ShowOpenAIConnected();
+		OpenAIEnableCheck.IsEnabled = hasOpenAI;
+		OpenAIEnableCheck.IsChecked = hasOpenAI && settings.SelectedProviders.Contains( UsageProvider.OpenAI );
 
 		// Gemini credentials
 		GeminiClientIdBox.Text         = settings.GeminiClientId;
@@ -63,6 +70,10 @@ public partial class SettingsWindow : Window
 		GeminiCredPathBox.Text         = string.IsNullOrEmpty( settings.GeminiCredentialsPath )
 			? @"%USERPROFILE%\.gemini\oauth_creds.json"
 			: settings.GeminiCredentialsPath;
+		var hasGemini = !string.IsNullOrWhiteSpace( settings.GeminiClientId )
+		                && !string.IsNullOrWhiteSpace( settings.GeminiClientSecret );
+		GeminiEnableCheck.IsEnabled = hasGemini;
+		GeminiEnableCheck.IsChecked = hasGemini && settings.SelectedProviders.Contains( UsageProvider.Gemini );
 
 		// Refresh interval
 		foreach ( ComboBoxItem item in IntervalCombo.Items )
@@ -180,6 +191,8 @@ public partial class SettingsWindow : Window
 
 			CopilotDeviceCodePanel.Visibility = Visibility.Collapsed;
 			ShowCopilotConnected();
+			CopilotEnableCheck.IsEnabled = true;
+			CopilotEnableCheck.IsChecked = true;
 			SetCopilotStatus( "✓ GitHub account connected!", WpfBrushes.Green );
 			UpdateTabHeaders();
 		}
@@ -213,6 +226,8 @@ public partial class SettingsWindow : Window
 
 		CopilotConnectedPanel.Visibility = Visibility.Collapsed;
 		CopilotAuthFlowPanel.Visibility  = Visibility.Visible;
+		CopilotEnableCheck.IsChecked     = false;
+		CopilotEnableCheck.IsEnabled     = false;
 		SetCopilotStatus( "Disconnected.", WpfBrushes.Gray );
 		UpdateTabHeaders();
 	}
@@ -261,6 +276,8 @@ public partial class SettingsWindow : Window
 
 			OpenAIDeviceCodePanel.Visibility = Visibility.Collapsed;
 			ShowOpenAIConnected();
+			OpenAIEnableCheck.IsEnabled = true;
+			OpenAIEnableCheck.IsChecked = true;
 			SetOpenAIStatus( "✓ OpenAI account connected!", WpfBrushes.Green );
 			UpdateTabHeaders();
 		}
@@ -295,6 +312,8 @@ public partial class SettingsWindow : Window
 
 		OpenAIConnectedPanel.Visibility = Visibility.Collapsed;
 		OpenAIAuthFlowPanel.Visibility  = Visibility.Visible;
+		OpenAIEnableCheck.IsChecked     = false;
+		OpenAIEnableCheck.IsEnabled     = false;
 		SetOpenAIStatus( "Disconnected.", WpfBrushes.Gray );
 		UpdateTabHeaders();
 	}
@@ -384,18 +403,14 @@ public partial class SettingsWindow : Window
 		settings.GeminiClientSecret    = GeminiClientSecretBox.Password;
 		settings.GeminiCredentialsPath = GeminiCredPathBox.Text.Trim();
 
-		// SelectedProviders auto-computed from what is actually connected
-		settings.SelectedProviders.Clear();
-		if ( !string.IsNullOrWhiteSpace( settings.SessionKey ) )
-			settings.SelectedProviders.Add( UsageProvider.Claude );
-		if ( !string.IsNullOrWhiteSpace( settings.GitHubToken ) )
-			settings.SelectedProviders.Add( UsageProvider.GitHubCopilot );
-		if ( !string.IsNullOrWhiteSpace( settings.OpenAIToken ) )
-			settings.SelectedProviders.Add( UsageProvider.OpenAI );
-		if ( !string.IsNullOrWhiteSpace( settings.GeminiClientId ) && !string.IsNullOrWhiteSpace( settings.GeminiClientSecret ) )
-			settings.SelectedProviders.Add( UsageProvider.Gemini );
+		// SelectedProviders = has credentials AND user enabled
+		var hasClaudeKey = !string.IsNullOrWhiteSpace( settings.SessionKey );
+		var hasCopilot   = !string.IsNullOrWhiteSpace( settings.GitHubToken );
+		var hasOpenAI    = !string.IsNullOrWhiteSpace( settings.OpenAIToken );
+		var hasGemini    = !string.IsNullOrWhiteSpace( settings.GeminiClientId )
+		                   && !string.IsNullOrWhiteSpace( settings.GeminiClientSecret );
 
-		if ( settings.SelectedProviders.Count == 0 )
+		if ( !hasClaudeKey && !hasCopilot && !hasOpenAI && !hasGemini )
 		{
 			System.Windows.MessageBox.Show(
 				"Please configure at least one provider before saving.",
@@ -404,6 +419,18 @@ public partial class SettingsWindow : Window
 				MessageBoxImage.Warning );
 			return;
 		}
+
+		// Update enable checkbox availability now that credentials may have changed
+		ClaudeEnableCheck.IsEnabled  = hasClaudeKey;
+		CopilotEnableCheck.IsEnabled = hasCopilot;
+		OpenAIEnableCheck.IsEnabled  = hasOpenAI;
+		GeminiEnableCheck.IsEnabled  = hasGemini;
+
+		settings.SelectedProviders.Clear();
+		if ( hasClaudeKey && ClaudeEnableCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Claude );
+		if ( hasCopilot   && CopilotEnableCheck.IsChecked == true ) settings.SelectedProviders.Add( UsageProvider.GitHubCopilot );
+		if ( hasOpenAI    && OpenAIEnableCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.OpenAI );
+		if ( hasGemini    && GeminiEnableCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Gemini );
 
 		if ( IntervalCombo.SelectedItem is ComboBoxItem selected &&
 			selected.Tag is string tag &&

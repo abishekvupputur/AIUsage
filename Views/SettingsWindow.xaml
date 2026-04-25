@@ -279,6 +279,9 @@
             <TabItem x:Name="ClaudeTab" Header="Claude AI">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="14,12">
+                        <CheckBox x:Name="ClaudeEnableCheck" Content="Show in tray application"
+                                  IsEnabled="False" Margin="0,0,0,8"/>
+                        <Separator Margin="0,0,0,12" Background="#333333" BorderBrush="#333333"/>
                         <TextBlock Text="Claude Session Key" FontWeight="SemiBold"
                                    FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
@@ -349,6 +352,9 @@
             <!-- GitHub Copilot -->
             <TabItem x:Name="CopilotTab" Header="GitHub Copilot">
                 <StackPanel Margin="14,12">
+                    <CheckBox x:Name="CopilotEnableCheck" Content="Show in tray application"
+                              IsEnabled="False" Margin="0,0,0,8"/>
+                    <Separator Margin="0,0,0,12" Background="#333333" BorderBrush="#333333"/>
                     <TextBlock Text="GitHub Copilot Auth" FontWeight="SemiBold"
                                FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
@@ -401,6 +407,9 @@
             <!-- OpenAI Codex -->
             <TabItem x:Name="OpenAITab" Header="OpenAI Codex">
                 <StackPanel Margin="14,12">
+                    <CheckBox x:Name="OpenAIEnableCheck" Content="Show in tray application"
+                              IsEnabled="False" Margin="0,0,0,8"/>
+                    <Separator Margin="0,0,0,12" Background="#333333" BorderBrush="#333333"/>
                     <TextBlock Text="OpenAI Codex Auth" FontWeight="SemiBold"
                                FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
@@ -453,6 +462,9 @@
             <!-- Gemini -->
             <TabItem x:Name="GeminiTab" Header="Gemini">
                 <StackPanel Margin="14,12">
+                    <CheckBox x:Name="GeminiEnableCheck" Content="Show in tray application"
+                              IsEnabled="False" Margin="0,0,0,8"/>
+                    <Separator Margin="0,0,0,12" Background="#333333" BorderBrush="#333333"/>
                     <TextBlock Text="Gemini Auth" FontWeight="SemiBold"
                                FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 

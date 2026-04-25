@@ -80,6 +80,36 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
 		e.Graphics.DrawLine( pen, 8, y, e.Item.Width - 8, y );
 	}
 
+	// ── Check mark (active provider indicator) ───────────────────────────
+	protected override void OnRenderItemCheck( ToolStripItemImageRenderEventArgs e )
+	{
+		var r = e.ImageRectangle;
+		if ( r.IsEmpty ) return;
+
+		var boxRect = new Rectangle( r.X + 1, r.Y + 2, r.Width - 2, r.Height - 4 );
+		using ( var bg = new SolidBrush( Color.FromArgb( 0x2A, 0x2A, 0x2A ) ) )
+			e.Graphics.FillRectangle( bg, boxRect );
+		using ( var border = new Pen( AccentColor ) )
+			e.Graphics.DrawRectangle( border, boxRect );
+
+		var g = e.Graphics;
+		g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+		using var pen = new Pen( AccentColor, 1.5f )
+		{
+			StartCap = System.Drawing.Drawing2D.LineCap.Round,
+			EndCap   = System.Drawing.Drawing2D.LineCap.Round,
+			LineJoin = System.Drawing.Drawing2D.LineJoin.Round,
+		};
+		float cx = r.X + r.Width  / 2f;
+		float cy = r.Y + r.Height / 2f;
+		g.DrawLines( pen, new PointF[]
+		{
+			new( cx - 3.5f, cy        ),
+			new( cx - 1f,   cy + 2.5f ),
+			new( cx + 3.5f, cy - 3f   ),
+		} );
+	}
+
 	// ── Arrow (sub-menu indicator) ────────────────────────────────────────
 	protected override void OnRenderArrow( ToolStripArrowRenderEventArgs e )
 	{
