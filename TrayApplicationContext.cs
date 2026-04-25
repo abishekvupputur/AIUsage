@@ -24,6 +24,8 @@ internal sealed class TrayApplicationContext : IDisposable
 	private UsagePopupWindow? m_PopupWindow;
 	private bool m_IsRefreshing;
 
+	private readonly Dictionary<UsageProvider, DateTime> m_LastRefreshed = [];
+
 	// Demo mode state
 	private int m_DemoStageIndex;
 
@@ -126,42 +128,56 @@ internal sealed class TrayApplicationContext : IDisposable
 		}
 		catch { /* already closing — ignore */ }
 
-		m_PopupWindow = new UsagePopupWindow( m_ViewModel, m_IsDemoMode ? null : RefreshAsync, m_IsDemoMode ? null : SwitchProvider );
+		m_PopupWindow = new UsagePopupWindow( m_ViewModel, m_IsDemoMode ? null : ( () => RefreshAsync() ), m_IsDemoMode ? null : SwitchProvider );
 		m_PopupWindow.Closed += ( _, _ ) => m_PopupWindow = null;
 		m_PopupWindow.Show();
 		m_PopupWindow.Activate();
 	}
 
 
-	public async Task RefreshAsync()
+	// Refresh all due providers (timer-driven).
+	private async Task RefreshDueAsync()
 	{
-		if ( m_IsRefreshing )
-		{
-			return;
-		}
+		var settings = SettingsService.Load();
+		var now      = DateTime.UtcNow;
+		var due = settings.SelectedProviders
+			.Where( p => !m_LastRefreshed.TryGetValue( p, out var last )
+			             || ( now - last ).TotalMinutes >= GetIntervalMinutes( settings, p ) )
+			.ToList();
+		if ( due.Count > 0 )
+			await RefreshAsync( due ).ConfigureAwait( false );
+	}
+
+	private static int GetIntervalMinutes( AppSettings s, UsageProvider p ) => p switch
+	{
+		UsageProvider.GitHubCopilot => s.CopilotRefreshIntervalMinutes,
+		UsageProvider.OpenAI        => s.OpenAIRefreshIntervalMinutes,
+		UsageProvider.Gemini        => s.GeminiRefreshIntervalMinutes,
+		_                           => s.ClaudeRefreshIntervalMinutes,
+	};
+
+	public async Task RefreshAsync( List<UsageProvider>? providers = null )
+	{
+		if ( m_IsRefreshing ) return;
 
 		m_IsRefreshing = true;
 		m_ViewModel.IsLoading = true;
 
-		var settings = SettingsService.Load();
-		var providers = settings.SelectedProviders;
+		var settings       = SettingsService.Load();
+		var toRefresh      = providers ?? [.. settings.SelectedProviders];
+		var activeProvider = m_ViewModel.Provider;
+
+		if ( !settings.SelectedProviders.Contains( activeProvider ) )
+		{
+			activeProvider       = settings.SelectedProviders.FirstOrDefault();
+			m_ViewModel.Provider = activeProvider;
+		}
 
 		try
 		{
-			// For simplicity in this multi-provider view, we update the viewmodel with the "current" provider
-			// that the user has active in the popup, or the first selected one.
-			// Ideally we'd have a list of data, but we'll stick to the current "Active Provider" pattern
-			// where the Tray reflects the active one.
-			
-			var activeProvider = m_ViewModel.Provider;
-			if ( !providers.Contains( activeProvider ) )
+			foreach ( var provider in toRefresh )
 			{
-				activeProvider = providers.FirstOrDefault();
-				m_ViewModel.Provider = activeProvider;
-			}
-
-			foreach ( var provider in providers )
-			{
+				if ( !settings.SelectedProviders.Contains( provider ) ) continue;
 				try
 				{
 					if ( provider == Models.UsageProvider.Gemini )
@@ -181,17 +197,13 @@ internal sealed class TrayApplicationContext : IDisposable
 						}
 						catch ( UnauthorizedAccessException )
 						{
-							if ( string.IsNullOrEmpty( settings.OpenAIRefreshToken ) )
-								throw;
-
+							if ( string.IsNullOrEmpty( settings.OpenAIRefreshToken ) ) throw;
 							var tokens = await OpenAIAuthService.RefreshTokenAsync( settings.OpenAIRefreshToken ).ConfigureAwait( true );
-							settings.OpenAIToken = tokens.AccessToken;
+							settings.OpenAIToken        = tokens.AccessToken;
 							settings.OpenAIRefreshToken = tokens.RefreshToken;
 							SettingsService.Save( settings );
-
 							data = await m_OpenAIService.GetUsageAsync( settings.OpenAIToken ).ConfigureAwait( true );
 						}
-
 						if ( activeProvider == provider )
 							m_ViewModel.UpdateFromData( data, provider );
 					}
@@ -200,10 +212,11 @@ internal sealed class TrayApplicationContext : IDisposable
 						var data = provider == Models.UsageProvider.GitHubCopilot
 							? await m_CopilotService.GetUsageAsync( settings.GitHubToken ).ConfigureAwait( true )
 							: await m_ClaudeService.GetUsageAsync( settings.SessionKey ).ConfigureAwait( true );
-
 						if ( activeProvider == provider )
 							m_ViewModel.UpdateFromData( data, provider );
 					}
+
+					m_LastRefreshed[provider] = DateTime.UtcNow;
 				}
 				catch ( Exception ex )
 				{
@@ -333,11 +346,10 @@ internal sealed class TrayApplicationContext : IDisposable
 	public void RestartTimer()
 	{
 		m_RefreshTimer?.Dispose();
-		var settings = SettingsService.Load();
-		var intervalMs = ( settings.RefreshIntervalMinutes > 0 ? settings.RefreshIntervalMinutes : 15 ) * 60 * 1000;
+		// Tick every 60 s; RefreshDueAsync checks per-provider elapsed time
 		m_RefreshTimer = new ThreadingTimer(
-			async _ => await System.Windows.Application.Current.Dispatcher.InvokeAsync( RefreshAsync ),
-			null, intervalMs, intervalMs );
+			async _ => await System.Windows.Application.Current.Dispatcher.InvokeAsync( RefreshDueAsync ),
+			null, 60_000, 60_000 );
 	}
 
 
@@ -410,10 +422,9 @@ internal sealed class TrayApplicationContext : IDisposable
 
 	internal void SwitchProvider( Models.UsageProvider provider )
 	{
-		if ( m_ViewModel.Provider == provider ) return;
 		m_ViewModel.Provider = provider;
 		UpdateTrayIcon();
-		_ = RefreshAsync();
+		_ = RefreshAsync( [provider] ); // force refresh only this provider
 	}
 
 	private void OpenSettings()

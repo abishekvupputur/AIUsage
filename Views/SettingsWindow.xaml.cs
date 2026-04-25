@@ -75,22 +75,33 @@ public partial class SettingsWindow : Window
 		GeminiEnableCheck.IsEnabled = hasGemini;
 		GeminiEnableCheck.IsChecked = hasGemini && settings.SelectedProviders.Contains( UsageProvider.Gemini );
 
-		// Refresh interval
-		foreach ( ComboBoxItem item in IntervalCombo.Items )
-		{
-			if ( item.Tag is string tag && int.TryParse( tag, out var val ) && val == settings.RefreshIntervalMinutes )
-			{
-				IntervalCombo.SelectedItem = item;
-				break;
-			}
-		}
-		if ( IntervalCombo.SelectedItem == null )
-			IntervalCombo.SelectedIndex = 1;
+		// Refresh intervals
+		SelectInterval( ClaudeIntervalCombo,  settings.ClaudeRefreshIntervalMinutes );
+		SelectInterval( CopilotIntervalCombo, settings.CopilotRefreshIntervalMinutes );
+		SelectInterval( OpenAIIntervalCombo,  settings.OpenAIRefreshIntervalMinutes );
+		SelectInterval( GeminiIntervalCombo,  settings.GeminiRefreshIntervalMinutes );
 
 		StartupCheckBox.IsChecked = settings.StartWithWindows;
 
 		UpdateTabHeaders();
 	}
+
+
+	private static void SelectInterval( System.Windows.Controls.ComboBox combo, int minutes )
+	{
+		foreach ( ComboBoxItem item in combo.Items )
+		{
+			if ( item.Tag is string tag && int.TryParse( tag, out var val ) && val == minutes )
+			{
+				combo.SelectedItem = item;
+				return;
+			}
+		}
+		combo.SelectedIndex = 1; // default 5 min
+	}
+
+	private static int ReadInterval( System.Windows.Controls.ComboBox combo, int fallback ) =>
+		combo.SelectedItem is ComboBoxItem { Tag: string tag } && int.TryParse( tag, out var v ) ? v : fallback;
 
 
 	// ── Tab header badges ─────────────────────────────────────────────────────
@@ -432,12 +443,10 @@ public partial class SettingsWindow : Window
 		if ( hasOpenAI    && OpenAIEnableCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.OpenAI );
 		if ( hasGemini    && GeminiEnableCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Gemini );
 
-		if ( IntervalCombo.SelectedItem is ComboBoxItem selected &&
-			selected.Tag is string tag &&
-			int.TryParse( tag, out var interval ) )
-		{
-			settings.RefreshIntervalMinutes = interval;
-		}
+		settings.ClaudeRefreshIntervalMinutes  = ReadInterval( ClaudeIntervalCombo,  5  );
+		settings.CopilotRefreshIntervalMinutes = ReadInterval( CopilotIntervalCombo, 15 );
+		settings.OpenAIRefreshIntervalMinutes  = ReadInterval( OpenAIIntervalCombo,  15 );
+		settings.GeminiRefreshIntervalMinutes  = ReadInterval( GeminiIntervalCombo,  15 );
 
 		settings.StartWithWindows = StartupCheckBox.IsChecked == true;
 

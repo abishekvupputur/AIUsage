@@ -268,8 +268,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ── Provider tabs ── -->
@@ -345,6 +343,18 @@
                                    FontSize="12" Margin="0,8,0,0"
                                    Foreground="#888888"
                                    Visibility="Collapsed"/>
+
+                        <Separator Margin="0,12,0,8" Background="#333333" BorderBrush="#333333"/>
+                        <DockPanel>
+                            <TextBlock Text="Refresh interval:" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ClaudeIntervalCombo" Width="120" HorizontalAlignment="Right" FontSize="11">
+                                <ComboBoxItem Content="1 minute"   Tag="1"/>
+                                <ComboBoxItem Content="5 minutes"  Tag="5"/>
+                                <ComboBoxItem Content="15 minutes" Tag="15"/>
+                                <ComboBoxItem Content="30 minutes" Tag="30"/>
+                                <ComboBoxItem Content="60 minutes" Tag="60"/>
+                            </ComboBox>
+                        </DockPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -401,6 +411,18 @@
                                FontSize="12" Margin="0,8,0,0"
                                Foreground="#888888"
                                Visibility="Collapsed"/>
+
+                    <Separator Margin="0,12,0,8" Background="#333333" BorderBrush="#333333"/>
+                    <DockPanel>
+                        <TextBlock Text="Refresh interval:" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="CopilotIntervalCombo" Width="120" HorizontalAlignment="Right" FontSize="11">
+                            <ComboBoxItem Content="1 minute"   Tag="1"/>
+                            <ComboBoxItem Content="5 minutes"  Tag="5"/>
+                            <ComboBoxItem Content="15 minutes" Tag="15"/>
+                            <ComboBoxItem Content="30 minutes" Tag="30"/>
+                            <ComboBoxItem Content="60 minutes" Tag="60"/>
+                        </ComboBox>
+                    </DockPanel>
                 </StackPanel>
             </TabItem>
 
@@ -456,6 +478,18 @@
                                FontSize="12" Margin="0,8,0,0"
                                Foreground="#888888"
                                Visibility="Collapsed"/>
+
+                    <Separator Margin="0,12,0,8" Background="#333333" BorderBrush="#333333"/>
+                    <DockPanel>
+                        <TextBlock Text="Refresh interval:" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="OpenAIIntervalCombo" Width="120" HorizontalAlignment="Right" FontSize="11">
+                            <ComboBoxItem Content="1 minute"   Tag="1"/>
+                            <ComboBoxItem Content="5 minutes"  Tag="5"/>
+                            <ComboBoxItem Content="15 minutes" Tag="15"/>
+                            <ComboBoxItem Content="30 minutes" Tag="30"/>
+                            <ComboBoxItem Content="60 minutes" Tag="60"/>
+                        </ComboBox>
+                    </DockPanel>
                 </StackPanel>
             </TabItem>
 
@@ -613,6 +647,18 @@ $creds.refresh_token   # copy this value</TextBlock>
                                FontSize="12" Margin="0,8,0,0"
                                Foreground="#888888"
                                Visibility="Collapsed"/>
+
+                    <Separator Margin="0,12,0,8" Background="#333333" BorderBrush="#333333"/>
+                    <DockPanel>
+                        <TextBlock Text="Refresh interval:" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="GeminiIntervalCombo" Width="120" HorizontalAlignment="Right" FontSize="11">
+                            <ComboBoxItem Content="1 minute"   Tag="1"/>
+                            <ComboBoxItem Content="5 minutes"  Tag="5"/>
+                            <ComboBoxItem Content="15 minutes" Tag="15"/>
+                            <ComboBoxItem Content="30 minutes" Tag="30"/>
+                            <ComboBoxItem Content="60 minutes" Tag="60"/>
+                        </ComboBox>
+                    </DockPanel>
                 </StackPanel>
             </TabItem>
 
@@ -621,23 +667,12 @@ $creds.refresh_token   # copy this value</TextBlock>
         <!-- Separator -->
         <Separator Grid.Row="1" Margin="0,0,0,14" Background="#2E2E2E" BorderBrush="#2E2E2E"/>
 
-        <!-- Refresh interval -->
-        <TextBlock Grid.Row="2" Text="Refresh Interval" FontWeight="SemiBold"
-                   Foreground="#EBEBEB" Margin="0,0,0,6"/>
-        <ComboBox x:Name="IntervalCombo" Grid.Row="3"
-                  Width="160" HorizontalAlignment="Left" Margin="0,0,0,12">
-            <ComboBoxItem Content="1 minute"   Tag="1"/>
-            <ComboBoxItem Content="5 minutes"  Tag="5"/>
-            <ComboBoxItem Content="15 minutes" Tag="15"/>
-            <ComboBoxItem Content="60 minutes" Tag="60"/>
-        </ComboBox>
-
         <!-- Start with Windows -->
-        <CheckBox x:Name="StartupCheckBox" Grid.Row="4"
+        <CheckBox x:Name="StartupCheckBox" Grid.Row="2"
                   Content="Start with Windows" Margin="0,0,0,18"/>
 
         <!-- Save / Cancel -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Save" Width="70" Margin="0,0,8,0"
                     Padding="0,6" IsDefault="True" Click="SaveButton_Click"/>
             <Button Content="Cancel" Width="70" Style="{StaticResource GhostButtonStyle}"
