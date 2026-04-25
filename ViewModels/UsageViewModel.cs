@@ -394,10 +394,8 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			OnPropertyChanged( nameof( CatStateLabel ) );
 			OnPropertyChanged( nameof( CatStateName ) );
 			OnPropertyChanged( nameof( CopilotCreditsSummary ) );
-		OnPropertyChanged( nameof( ShowStandardBars ) );
-		OnPropertyChanged( nameof( ShowGeminiBuckets ) );
-		OnPropertyChanged( nameof( ShowGeminiSingleList ) );
-		OnPropertyChanged( nameof( ShowGeminiTabs ) );
+			OnPropertyChanged( nameof( ShowStandardBars ) );
+			FireGeminiVisibility();
 		}
 	}
 
