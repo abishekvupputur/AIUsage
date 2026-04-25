@@ -122,7 +122,7 @@ internal sealed class TrayApplicationContext : IDisposable
 		}
 		catch { /* already closing — ignore */ }
 
-		m_PopupWindow = new UsagePopupWindow( m_ViewModel, m_IsDemoMode ? null : RefreshAsync );
+		m_PopupWindow = new UsagePopupWindow( m_ViewModel, m_IsDemoMode ? null : RefreshAsync, m_IsDemoMode ? null : SwitchProvider );
 		m_PopupWindow.Closed += ( _, _ ) => m_PopupWindow = null;
 		m_PopupWindow.Show();
 		m_PopupWindow.Activate();
@@ -316,6 +316,16 @@ internal sealed class TrayApplicationContext : IDisposable
 		return new DateTimeOffset( now.Date.AddDays( daysUntilSunday ).AddHours( 15 ).AddMinutes( 59 ) );
 	}
 
+
+	internal void SwitchProvider( Models.UsageProvider provider )
+	{
+		var settings = SettingsService.Load();
+		if ( settings.Provider == provider ) return;
+		settings.Provider = provider;
+		SettingsService.Save( settings );
+		RestartTimer();
+		_ = RefreshAsync();
+	}
 
 	private void OpenSettings()
 	{

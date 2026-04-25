@@ -1,8 +1,10 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CopilotUsage.Models;
 using CopilotUsage.ViewModels;
 
 namespace CopilotUsage.Views;
@@ -22,11 +24,13 @@ public partial class UsagePopupWindow : Window
 	private string m_CurrentCatState = string.Empty;
 
 	private Func<Task>? m_RefreshAction;
+	private Action<UsageProvider>? m_SwitchProviderAction;
 
-	internal UsagePopupWindow( UsageViewModel viewModel, Func<Task>? refreshAction = null )
+	internal UsagePopupWindow( UsageViewModel viewModel, Func<Task>? refreshAction = null, Action<UsageProvider>? switchProviderAction = null )
 	{
 		ViewModel = viewModel;
 		m_RefreshAction = refreshAction;
+		m_SwitchProviderAction = switchProviderAction;
 		DataContext = viewModel;
 		InitializeComponent();
 
@@ -48,13 +52,46 @@ public partial class UsagePopupWindow : Window
 		viewModel.PropertyChanged += ViewModel_PropertyChanged;
 		Closed += Window_Closed;
 
-		// Position once the layout pass has run and the actual size is known.
-		Loaded += ( _, _ ) => PositionNearTray();
+		Loaded += ( _, _ ) =>
+		{
+			UpdateProviderButtons();
+			PositionNearTray();
+		};
 	}
 
 
+	private void UpdateProviderButtons()
+	{
+		var active   = (Style)Resources["ProvBtnActiveStyle"];
+		var inactive = (Style)Resources["ProvBtnInactiveStyle"];
+		ClaudeProviderBtn.Style  = ViewModel.Provider == UsageProvider.Claude        ? active : inactive;
+		CopilotProviderBtn.Style = ViewModel.Provider == UsageProvider.GitHubCopilot ? active : inactive;
+		GeminiProviderBtn.Style  = ViewModel.Provider == UsageProvider.Gemini        ? active : inactive;
+	}
+
+	private void ClaudeProvider_Click( object sender, RoutedEventArgs e )
+	{
+		m_SwitchProviderAction?.Invoke( UsageProvider.Claude );
+	}
+
+	private void CopilotProvider_Click( object sender, RoutedEventArgs e )
+	{
+		m_SwitchProviderAction?.Invoke( UsageProvider.GitHubCopilot );
+	}
+
+	private void GeminiProvider_Click( object sender, RoutedEventArgs e )
+	{
+		m_SwitchProviderAction?.Invoke( UsageProvider.Gemini );
+	}
+
 	private void ViewModel_PropertyChanged( object? sender, PropertyChangedEventArgs e )
 	{
+		if ( e.PropertyName == nameof( UsageViewModel.Provider ) )
+		{
+			UpdateProviderButtons();
+			return;
+		}
+
 		if ( e.PropertyName == nameof( UsageViewModel.CatStateName )
 			&& m_WaitingLoopPause
 			&& ViewModel.CatStateName != m_CurrentCatState )

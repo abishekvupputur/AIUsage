@@ -64,7 +64,11 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
 	// ── Item text ─────────────────────────────────────────────────────────
 	protected override void OnRenderItemText( ToolStripItemTextRenderEventArgs e )
 	{
-		e.TextColor = e.Item.Enabled ? TextColor : Color.FromArgb( 0x55, 0x55, 0x55 );
+		e.TextColor = !e.Item.Enabled
+			? Color.FromArgb( 0x55, 0x55, 0x55 )
+			: e.Item.ForeColor != SystemColors.ControlText
+				? e.Item.ForeColor   // respect explicit ForeColor (used for active provider highlight)
+				: TextColor;
 		base.OnRenderItemText( e );
 	}
 

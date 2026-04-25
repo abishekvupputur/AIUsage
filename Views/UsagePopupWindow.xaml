@@ -67,6 +67,53 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Provider toggle: active -->
+        <Style x:Key="ProvBtnActiveStyle" TargetType="Button">
+            <Setter Property="Background" Value="#D4845A"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="7,3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Provider toggle: inactive -->
+        <Style x:Key="ProvBtnInactiveStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#666666"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="7,3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#2E2E2E"/>
+                                <Setter Property="Foreground" Value="#EBEBEB"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Icon button: transparent bg, subtle dark rounded hover -->
         <Style x:Key="IconButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -105,7 +152,7 @@
 
         <StackPanel Width="300" TextElement.FontFamily="Segoe UI">
 
-            <!-- Header: docked buttons must come before the fill element -->
+            <!-- Header -->
             <DockPanel Margin="8,0,0,12">
                 <!-- Close -->
                 <Button DockPanel.Dock="Right" Content="✕" Width="22" Height="22"
@@ -122,19 +169,22 @@
                         ToolTip="Refresh now">
                     <Viewbox Width="13" Height="13">
                         <Canvas Width="24" Height="24">
-                            <!-- Circular arrow path -->
                             <Path Stroke="#D4845A" StrokeThickness="2.2" Fill="Transparent"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                   Data="M 20,12 A 8,8 0 1 1 16.5,5.1"/>
-                            <!-- Arrowhead -->
                             <Polygon Points="14,2 18,6 13,7" Fill="#D4845A"/>
                         </Canvas>
                     </Viewbox>
                 </Button>
-                <!-- Title fills remaining left space -->
-                <TextBlock Text="{Binding AppTitle}" FontWeight="SemiBold" FontSize="13"
-                           Foreground="#EBEBEB" VerticalAlignment="Center"
-                           FontFamily="Segoe UI"/>
+                <!-- Provider toggle buttons -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ClaudeProviderBtn" Content="Claude" Margin="0,0,4,0"
+                            Click="ClaudeProvider_Click"/>
+                    <Button x:Name="CopilotProviderBtn" Content="Copilot" Margin="0,0,4,0"
+                            Click="CopilotProvider_Click"/>
+                    <Button x:Name="GeminiProviderBtn" Content="Gemini"
+                            Click="GeminiProvider_Click"/>
+                </StackPanel>
             </DockPanel>
 
             <!-- Error panel -->
