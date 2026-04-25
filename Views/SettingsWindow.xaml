@@ -211,18 +211,21 @@
 
         <!-- Provider selector -->
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="Provider" FontWeight="SemiBold" FontSize="13"
+            <TextBlock Text="Providers" FontWeight="SemiBold" FontSize="13"
                        Foreground="#EBEBEB" Margin="0,0,0,8"/>
             <StackPanel Orientation="Horizontal">
-                <RadioButton x:Name="ClaudeRadio" Content="Claude AI"
+                <CheckBox x:Name="ClaudeCheck" Content="Claude AI"
                              Foreground="#EBEBEB" Margin="0,0,16,0"
-                             Checked="Provider_Checked"/>
-                <RadioButton x:Name="CopilotRadio" Content="GitHub Copilot"
+                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
+                <CheckBox x:Name="CopilotCheck" Content="GitHub Copilot"
                              Foreground="#EBEBEB" Margin="0,0,16,0"
-                             Checked="Provider_Checked"/>
-                <RadioButton x:Name="GeminiRadio" Content="Gemini"
+                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
+                <CheckBox x:Name="OpenAICheck" Content="OpenAI Codex"
+                             Foreground="#EBEBEB" Margin="0,0,16,0"
+                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
+                <CheckBox x:Name="GeminiCheck" Content="Gemini"
                              Foreground="#EBEBEB"
-                             Checked="Provider_Checked"/>
+                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
             </StackPanel>
         </StackPanel>
 
@@ -347,6 +350,63 @@
                 </StackPanel>
 
                 <TextBlock x:Name="CopilotStatusText"
+                           Text="" TextWrapping="Wrap"
+                           FontSize="12" Margin="0,8,0,0"
+                           Foreground="#888888"
+                           Visibility="Collapsed"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ── OpenAI auth panel ── -->
+        <Border x:Name="OpenAIPanel" Grid.Row="1"
+                Background="#222222" BorderBrush="#333333" BorderThickness="1"
+                CornerRadius="6" Padding="14,12" Margin="0,0,0,14"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="OpenAI Codex Auth" FontWeight="SemiBold"
+                           FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
+
+                <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,12" TextWrapping="Wrap">
+                    Sign in with your OpenAI/ChatGPT account to access your Codex subscription limits.
+                    Note: This is separate from OpenAI Platform (API) credits.
+                </TextBlock>
+
+                <!-- Connected state -->
+                <StackPanel x:Name="OpenAIConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
+                    <TextBlock x:Name="OpenAIConnectedText" FontSize="12" Foreground="#3FB950"
+                               Margin="0,0,0,8"/>
+                    <Button x:Name="OpenAIDisconnectButton" Content="Disconnect"
+                            Width="110" HorizontalAlignment="Left" Padding="0,6"
+                            Style="{StaticResource GhostButtonStyle}"
+                            Click="OpenAIDisconnect_Click"/>
+                </StackPanel>
+
+                <!-- Device code flow -->
+                <StackPanel x:Name="OpenAIAuthFlowPanel">
+                    <!-- Step 1: Connect button -->
+                    <Button x:Name="OpenAIConnectButton" Content="Connect OpenAI Account"
+                            Width="180" HorizontalAlignment="Left" Padding="0,6"
+                            Click="OpenAIConnect_Click"/>
+
+                    <!-- Step 2: Device code display (shown while waiting) -->
+                    <StackPanel x:Name="OpenAIDeviceCodePanel" Visibility="Collapsed" Margin="0,10,0,0">
+                        <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
+                            Open the URL below and enter the code to authorise:
+                        </TextBlock>
+                        <TextBlock x:Name="OpenAIVerificationUrl" FontSize="12" Foreground="#D4845A"
+                                   Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
+                        <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
+                        <TextBlock x:Name="OpenAIUserCode" FontSize="20" FontWeight="Bold"
+                                   Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
+                                   Margin="0,0,0,8"/>
+                        <Button x:Name="OpenAICancelButton" Content="Cancel"
+                                Width="80" HorizontalAlignment="Left" Padding="0,6"
+                                Style="{StaticResource GhostButtonStyle}"
+                                Click="OpenAICancel_Click"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <TextBlock x:Name="OpenAIStatusText"
                            Text="" TextWrapping="Wrap"
                            FontSize="12" Margin="0,8,0,0"
                            Foreground="#888888"

@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CopilotUsage.Models;
+using CopilotUsage.Services;
 using CopilotUsage.ViewModels;
 
 namespace CopilotUsage.Views;
@@ -62,10 +63,19 @@ public partial class UsagePopupWindow : Window
 
 	private void UpdateProviderButtons()
 	{
+		var settings = SettingsService.Load();
+		var selected = settings.SelectedProviders;
+
+		ClaudeProviderBtn.Visibility  = selected.Contains( UsageProvider.Claude )        ? Visibility.Visible : Visibility.Collapsed;
+		CopilotProviderBtn.Visibility = selected.Contains( UsageProvider.GitHubCopilot ) ? Visibility.Visible : Visibility.Collapsed;
+		OpenAIProviderBtn.Visibility  = selected.Contains( UsageProvider.OpenAI )        ? Visibility.Visible : Visibility.Collapsed;
+		GeminiProviderBtn.Visibility  = selected.Contains( UsageProvider.Gemini )        ? Visibility.Visible : Visibility.Collapsed;
+
 		var active   = (Style)Resources["ProvBtnActiveStyle"];
 		var inactive = (Style)Resources["ProvBtnInactiveStyle"];
 		ClaudeProviderBtn.Style  = ViewModel.Provider == UsageProvider.Claude        ? active : inactive;
 		CopilotProviderBtn.Style = ViewModel.Provider == UsageProvider.GitHubCopilot ? active : inactive;
+		OpenAIProviderBtn.Style  = ViewModel.Provider == UsageProvider.OpenAI        ? active : inactive;
 		GeminiProviderBtn.Style  = ViewModel.Provider == UsageProvider.Gemini        ? active : inactive;
 	}
 
@@ -77,6 +87,11 @@ public partial class UsagePopupWindow : Window
 	private void CopilotProvider_Click( object sender, RoutedEventArgs e )
 	{
 		m_SwitchProviderAction?.Invoke( UsageProvider.GitHubCopilot );
+	}
+
+	private void OpenAIProvider_Click( object sender, RoutedEventArgs e )
+	{
+		m_SwitchProviderAction?.Invoke( UsageProvider.OpenAI );
 	}
 
 	private void GeminiProvider_Click( object sender, RoutedEventArgs e )
@@ -223,6 +238,8 @@ public partial class UsagePopupWindow : Window
 				else if ( state == "sleeping" )
 				{
 					m_CatFrameIndex = 0;
+					m_CatTimer.Interval = TimeSpan.FromMilliseconds(
+						s_StateIntervals.TryGetValue( state, out var ms ) ? ms : 1000 );
 				}
 				else if ( !m_PlayedFirstAgain )
 				{

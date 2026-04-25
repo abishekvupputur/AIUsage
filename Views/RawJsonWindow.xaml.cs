@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using CopilotUsage.Helpers;
+using CopilotUsage.Models;
+using CopilotUsage.Services;
 
 namespace CopilotUsage.Views;
 
@@ -25,8 +27,17 @@ public partial class RawJsonWindow : Window
 
 	private void SetActiveButton( string key )
 	{
+		var settings = SettingsService.Load();
+		var selected = settings.SelectedProviders;
+
+		ClaudeBtn.Visibility  = selected.Contains( UsageProvider.Claude )        ? Visibility.Visible : Visibility.Collapsed;
+		CopilotBtn.Visibility = selected.Contains( UsageProvider.GitHubCopilot ) ? Visibility.Visible : Visibility.Collapsed;
+		OpenAIBtn.Visibility  = selected.Contains( UsageProvider.OpenAI )        ? Visibility.Visible : Visibility.Collapsed;
+		GeminiBtn.Visibility  = selected.Contains( UsageProvider.Gemini )        ? Visibility.Visible : Visibility.Collapsed;
+
 		ClaudeBtn.Style  = key == "Claude"  ? (Style)Resources["ProviderActiveStyle"] : (Style)Resources["ProviderInactiveStyle"];
 		CopilotBtn.Style = key == "Copilot" ? (Style)Resources["ProviderActiveStyle"] : (Style)Resources["ProviderInactiveStyle"];
+		OpenAIBtn.Style  = key == "OpenAI"  ? (Style)Resources["ProviderActiveStyle"] : (Style)Resources["ProviderInactiveStyle"];
 		GeminiBtn.Style  = key == "Gemini"  ? (Style)Resources["ProviderActiveStyle"] : (Style)Resources["ProviderInactiveStyle"];
 	}
 

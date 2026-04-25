@@ -21,6 +21,7 @@ public partial class SettingsWindow : Window
 	private readonly ClaudeUsageService   m_ClaudeService   = new();
 	private readonly GitHubCopilotService m_CopilotService  = new();
 	private readonly GeminiUsageService   m_GeminiService   = new();
+	private readonly OpenAIUsageService   m_OpenAIService   = new();
 	private CancellationTokenSource?      m_AuthCts;
 
 
@@ -43,13 +44,11 @@ public partial class SettingsWindow : Window
 	{
 		var settings = SettingsService.Load();
 
-		// Provider radio
-		if ( settings.Provider == UsageProvider.GitHubCopilot )
-			CopilotRadio.IsChecked = true;
-		else if ( settings.Provider == UsageProvider.Gemini )
-			GeminiRadio.IsChecked = true;
-		else
-			ClaudeRadio.IsChecked = true;
+		// Provider checkboxes
+		ClaudeCheck.IsChecked  = settings.SelectedProviders.Contains( UsageProvider.Claude );
+		CopilotCheck.IsChecked = settings.SelectedProviders.Contains( UsageProvider.GitHubCopilot );
+		OpenAICheck.IsChecked  = settings.SelectedProviders.Contains( UsageProvider.OpenAI );
+		GeminiCheck.IsChecked  = settings.SelectedProviders.Contains( UsageProvider.Gemini );
 
 		// Claude key
 		SessionKeyBox.Text = settings.SessionKey;
@@ -59,6 +58,10 @@ public partial class SettingsWindow : Window
 		// GitHub token
 		if ( !string.IsNullOrWhiteSpace( settings.GitHubToken ) )
 			ShowCopilotConnected();
+
+		// OpenAI token
+		if ( !string.IsNullOrWhiteSpace( settings.OpenAIToken ) )
+			ShowOpenAIConnected();
 
 		// Refresh interval
 		foreach ( ComboBoxItem item in IntervalCombo.Items )
@@ -85,15 +88,14 @@ public partial class SettingsWindow : Window
 	}
 
 
-	private void Provider_Checked( object sender, RoutedEventArgs e ) => UpdateProviderPanels();
+	private void Provider_Changed( object sender, RoutedEventArgs e ) => UpdateProviderPanels();
 
 	private void UpdateProviderPanels()
 	{
-		bool isGemini  = GeminiRadio.IsChecked  == true;
-		bool isCopilot = CopilotRadio.IsChecked == true;
-		ClaudePanel.Visibility  = ( !isCopilot && !isGemini ) ? Visibility.Visible : Visibility.Collapsed;
-		CopilotPanel.Visibility = isCopilot ? Visibility.Visible : Visibility.Collapsed;
-		GeminiPanel.Visibility  = isGemini  ? Visibility.Visible : Visibility.Collapsed;
+		ClaudePanel.Visibility  = ClaudeCheck.IsChecked  == true ? Visibility.Visible : Visibility.Collapsed;
+		CopilotPanel.Visibility = CopilotCheck.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+		OpenAIPanel.Visibility  = OpenAICheck.IsChecked  == true ? Visibility.Visible : Visibility.Collapsed;
+		GeminiPanel.Visibility  = GeminiCheck.IsChecked  == true ? Visibility.Visible : Visibility.Collapsed;
 	}
 
 
@@ -234,6 +236,88 @@ public partial class SettingsWindow : Window
 	}
 
 
+	// ── OpenAI ────────────────────────────────────────────────────────────────
+
+	private async void OpenAIConnect_Click( object sender, RoutedEventArgs e )
+	{
+		OpenAIConnectButton.IsEnabled = false;
+		SetOpenAIStatus( "Requesting device code…", WpfBrushes.Gray );
+
+		try
+		{
+			var info = await OpenAIAuthService.RequestDeviceCodeAsync().ConfigureAwait( true );
+
+			OpenAIVerificationUrl.Text   = info.VerificationUri;
+			OpenAIUserCode.Text          = info.UserCode;
+			OpenAIDeviceCodePanel.Visibility = Visibility.Visible;
+			SetOpenAIStatus( "Waiting for you to authorise in the browser…", WpfBrushes.Gray );
+
+			// Open browser
+			Process.Start( new ProcessStartInfo( info.VerificationUri ) { UseShellExecute = true } );
+
+			m_AuthCts = new CancellationTokenSource();
+			var tokens = await OpenAIAuthService.PollForTokenAsync( info.DeviceCode, info.UserCode, info.Interval, m_AuthCts.Token )
+				.ConfigureAwait( true );
+
+			// Save tokens immediately
+			var settings = SettingsService.Load();
+			settings.OpenAIToken = tokens.AccessToken;
+			settings.OpenAIRefreshToken = tokens.RefreshToken;
+			SettingsService.Save( settings );
+
+			OpenAIDeviceCodePanel.Visibility = Visibility.Collapsed;
+			ShowOpenAIConnected();
+			SetOpenAIStatus( "✓ OpenAI account connected!", WpfBrushes.Green );
+		}
+		catch ( OperationCanceledException )
+		{
+			SetOpenAIStatus( "Cancelled.", WpfBrushes.Gray );
+			OpenAIDeviceCodePanel.Visibility = Visibility.Collapsed;
+		}
+		catch ( Exception ex )
+		{
+			SetOpenAIStatus( ex.Message, WpfBrushes.Red );
+			OpenAIDeviceCodePanel.Visibility = Visibility.Collapsed;
+		}
+		finally
+		{
+			OpenAIConnectButton.IsEnabled = true;
+			m_AuthCts = null;
+		}
+	}
+
+	private void OpenAICancel_Click( object sender, RoutedEventArgs e )
+	{
+		m_AuthCts?.Cancel();
+	}
+
+	private void OpenAIDisconnect_Click( object sender, RoutedEventArgs e )
+	{
+		var settings = SettingsService.Load();
+		settings.OpenAIToken = string.Empty;
+		settings.OpenAIRefreshToken = string.Empty;
+		SettingsService.Save( settings );
+
+		OpenAIConnectedPanel.Visibility  = Visibility.Collapsed;
+		OpenAIAuthFlowPanel.Visibility   = Visibility.Visible;
+		SetOpenAIStatus( "Disconnected.", WpfBrushes.Gray );
+	}
+
+	private void ShowOpenAIConnected()
+	{
+		OpenAIConnectedText.Text         = "✓ OpenAI account connected";
+		OpenAIConnectedPanel.Visibility  = Visibility.Visible;
+		OpenAIAuthFlowPanel.Visibility   = Visibility.Collapsed;
+	}
+
+	private void SetOpenAIStatus( string message, WpfBrush color )
+	{
+		OpenAIStatusText.Text       = message;
+		OpenAIStatusText.Foreground = color;
+		OpenAIStatusText.Visibility = Visibility.Visible;
+	}
+
+
 	// ── Gemini ────────────────────────────────────────────────────────────────
 
 	private void GeminiBrowse_Click( object sender, RoutedEventArgs e )
@@ -299,9 +383,17 @@ public partial class SettingsWindow : Window
 	{
 		var settings = SettingsService.Load();
 
-		settings.Provider = CopilotRadio.IsChecked == true ? UsageProvider.GitHubCopilot :
-		                    GeminiRadio.IsChecked  == true ? UsageProvider.Gemini :
-		                    UsageProvider.Claude;
+		settings.SelectedProviders.Clear();
+		if ( ClaudeCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Claude );
+		if ( CopilotCheck.IsChecked == true ) settings.SelectedProviders.Add( UsageProvider.GitHubCopilot );
+		if ( OpenAICheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.OpenAI );
+		if ( GeminiCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Gemini );
+
+		if ( settings.SelectedProviders.Count == 0 )
+		{
+			System.Windows.MessageBox.Show( "Please select at least one provider.", "No Provider Selected", MessageBoxButton.OK, MessageBoxImage.Warning );
+			return;
+		}
 
 		settings.SessionKey            = SessionKeyBox.Text.Trim();
 		settings.GeminiClientId        = GeminiClientIdBox.Text.Trim();

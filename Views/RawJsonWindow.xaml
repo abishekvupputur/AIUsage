@@ -92,6 +92,8 @@
                         Tag="Claude"  Click="ProviderBtn_Click"/>
                 <Button x:Name="CopilotBtn" Content="Copilot" Margin="0,0,6,0"
                         Tag="Copilot" Click="ProviderBtn_Click"/>
+                <Button x:Name="OpenAIBtn"  Content="OpenAI"  Margin="0,0,6,0"
+                        Tag="OpenAI"  Click="ProviderBtn_Click"/>
                 <Button x:Name="GeminiBtn"  Content="Gemini"
                         Tag="Gemini"  Click="ProviderBtn_Click"/>
             </StackPanel>

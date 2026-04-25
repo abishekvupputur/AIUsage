@@ -3,6 +3,7 @@ using System.Linq;
 using ThreadingTimer = System.Threading.Timer;
 
 using CopilotUsage.Helpers;
+using CopilotUsage.Models;
 using CopilotUsage.Services;
 using CopilotUsage.ViewModels;
 using CopilotUsage.Views;
@@ -14,6 +15,7 @@ internal sealed class TrayApplicationContext : IDisposable
 	private readonly ClaudeUsageService    m_ClaudeService   = new();
 	private readonly GitHubCopilotService  m_CopilotService  = new();
 	private readonly GeminiUsageService    m_GeminiService   = new();
+	private readonly OpenAIUsageService    m_OpenAIService   = new();
 	private readonly UsageViewModel m_ViewModel;
 	private readonly bool m_IsDemoMode;
 
@@ -63,11 +65,13 @@ internal sealed class TrayApplicationContext : IDisposable
 				["Claude"]  = () => m_ClaudeService.GetRawUsageJsonAsync( s.SessionKey ),
 				["Copilot"] = () => m_CopilotService.GetRawUsageJsonAsync( s.GitHubToken ),
 				["Gemini"]  = () => m_GeminiService.GetRawJsonAsync( s.GeminiClientId, s.GeminiClientSecret, s.GeminiCredentialsPath ),
+				["OpenAI"]  = () => m_OpenAIService.GetRawUsageJsonAsync( s.OpenAIToken ),
 			};
-			var initial = s.Provider switch
+			var initial = m_ViewModel.Provider switch
 			{
 				Models.UsageProvider.GitHubCopilot => "Copilot",
 				Models.UsageProvider.Gemini        => "Gemini",
+				Models.UsageProvider.OpenAI        => "OpenAI",
 				_                                  => "Claude",
 			};
 			System.Windows.Application.Current.Dispatcher.Invoke( () => new RawJsonWindow( providers, initial ).Show() );
@@ -140,35 +144,75 @@ internal sealed class TrayApplicationContext : IDisposable
 		m_ViewModel.IsLoading = true;
 
 		var settings = SettingsService.Load();
+		var providers = settings.SelectedProviders;
 
 		try
 		{
-			if ( settings.Provider == Models.UsageProvider.Gemini )
+			// For simplicity in this multi-provider view, we update the viewmodel with the "current" provider
+			// that the user has active in the popup, or the first selected one.
+			// Ideally we'd have a list of data, but we'll stick to the current "Active Provider" pattern
+			// where the Tray reflects the active one.
+			
+			var activeProvider = m_ViewModel.Provider;
+			if ( !providers.Contains( activeProvider ) )
 			{
-				var buckets = await m_GeminiService.GetQuotaAsync(
-					settings.GeminiClientId, settings.GeminiClientSecret, settings.GeminiCredentialsPath )
-					.ConfigureAwait( true );
-				m_ViewModel.UpdateFromGeminiData( buckets );
-				UpdateTrayIcon();
+				activeProvider = providers.FirstOrDefault();
+				m_ViewModel.Provider = activeProvider;
 			}
-			else
+
+			foreach ( var provider in providers )
 			{
-				var data = settings.Provider == Models.UsageProvider.GitHubCopilot
-					? await m_CopilotService.GetUsageAsync( settings.GitHubToken ).ConfigureAwait( true )
-					: await m_ClaudeService.GetUsageAsync( settings.SessionKey ).ConfigureAwait( true );
+				try
+				{
+					if ( provider == Models.UsageProvider.Gemini )
+					{
+						var buckets = await m_GeminiService.GetQuotaAsync(
+							settings.GeminiClientId, settings.GeminiClientSecret, settings.GeminiCredentialsPath )
+							.ConfigureAwait( true );
+						if ( activeProvider == provider )
+							m_ViewModel.UpdateFromGeminiData( buckets );
+					}
+					else if ( provider == Models.UsageProvider.OpenAI )
+					{
+						CopilotUsageData data;
+						try
+						{
+							data = await m_OpenAIService.GetUsageAsync( settings.OpenAIToken ).ConfigureAwait( true );
+						}
+						catch ( UnauthorizedAccessException )
+						{
+							if ( string.IsNullOrEmpty( settings.OpenAIRefreshToken ) )
+								throw;
 
-				m_ViewModel.UpdateFromData( data, settings.Provider );
+							var tokens = await OpenAIAuthService.RefreshTokenAsync( settings.OpenAIRefreshToken ).ConfigureAwait( true );
+							settings.OpenAIToken = tokens.AccessToken;
+							settings.OpenAIRefreshToken = tokens.RefreshToken;
+							SettingsService.Save( settings );
 
-				if ( data.IsUnavailable )
-					UpdateTrayIconError();
-				else
-					UpdateTrayIcon();
+							data = await m_OpenAIService.GetUsageAsync( settings.OpenAIToken ).ConfigureAwait( true );
+						}
+
+						if ( activeProvider == provider )
+							m_ViewModel.UpdateFromData( data, provider );
+					}
+					else
+					{
+						var data = provider == Models.UsageProvider.GitHubCopilot
+							? await m_CopilotService.GetUsageAsync( settings.GitHubToken ).ConfigureAwait( true )
+							: await m_ClaudeService.GetUsageAsync( settings.SessionKey ).ConfigureAwait( true );
+
+						if ( activeProvider == provider )
+							m_ViewModel.UpdateFromData( data, provider );
+					}
+				}
+				catch ( Exception ex )
+				{
+					if ( activeProvider == provider )
+						m_ViewModel.ErrorMessage = $"{provider}: {ex.Message}";
+				}
 			}
-		}
-		catch ( Exception ex )
-		{
-			m_ViewModel.ErrorMessage = ex.Message;
-			UpdateTrayIconError();
+
+			UpdateTrayIcon();
 		}
 		finally
 		{
@@ -189,8 +233,12 @@ internal sealed class TrayApplicationContext : IDisposable
 		var oldIcon = m_NotifyIcon.Icon;
 		m_NotifyIcon.Icon = TrayIconHelper.CreateUsageIcon( percent );
 
-		var provider = SettingsService.Load().Provider;
+		var settings = SettingsService.Load();
+		var provider = m_ViewModel.Provider;
 		var prefix = m_IsDemoMode ? "[DEMO] " : string.Empty;
+
+		// Rebuild context menu to show only selected providers
+		UpdateContextMenu( settings );
 
 		string trayText;
 		if ( provider == Models.UsageProvider.Gemini )
@@ -203,8 +251,13 @@ internal sealed class TrayApplicationContext : IDisposable
 		}
 		else
 		{
-			var label = provider == Models.UsageProvider.GitHubCopilot ? "Copilot" : "Claude";
-			trayText = provider == Models.UsageProvider.GitHubCopilot
+			var label = provider switch
+			{
+				Models.UsageProvider.GitHubCopilot => "Copilot",
+				Models.UsageProvider.OpenAI        => "OpenAI",
+				_                                  => "Claude",
+			};
+			trayText = ( provider == Models.UsageProvider.GitHubCopilot || provider == Models.UsageProvider.OpenAI )
 				&& m_ViewModel.SessionUsed.HasValue
 				&& m_ViewModel.SessionLimit.HasValue
 				? string.IsNullOrEmpty( m_ViewModel.CopilotCreditsSummary )
@@ -215,6 +268,43 @@ internal sealed class TrayApplicationContext : IDisposable
 
 		m_NotifyIcon.Text = trayText;
 		oldIcon?.Dispose();
+	}
+
+	private void UpdateContextMenu( AppSettings settings )
+	{
+		var menu = m_NotifyIcon!.ContextMenuStrip!;
+		
+		// Remove old provider items (they are at the top)
+		while ( menu.Items.Count > 0 && menu.Items[0].Tag is UsageProvider )
+		{
+			menu.Items.RemoveAt( 0 );
+		}
+
+		// Add selected providers
+		int insertIdx = 0;
+		foreach ( var provider in settings.SelectedProviders )
+		{
+			var name = provider switch
+			{
+				UsageProvider.GitHubCopilot => "GitHub Copilot",
+				UsageProvider.OpenAI        => "OpenAI Codex",
+				UsageProvider.Gemini        => "Gemini",
+				_                           => "Claude AI",
+			};
+
+			var item = new ToolStripMenuItem( name, null, ( _, _ ) => SwitchProvider( provider ) )
+			{
+				Tag     = provider,
+				Checked = m_ViewModel.Provider == provider
+			};
+			menu.Items.Insert( insertIdx++, item );
+		}
+
+		// Ensure there's a separator after providers if we added any
+		if ( insertIdx > 0 && menu.Items.Count > insertIdx && menu.Items[insertIdx] is not ToolStripSeparator )
+		{
+			menu.Items.Insert( insertIdx, new ToolStripSeparator() );
+		}
 	}
 
 
@@ -228,10 +318,11 @@ internal sealed class TrayApplicationContext : IDisposable
 		var oldIcon = m_NotifyIcon.Icon;
 		m_NotifyIcon.Icon = TrayIconHelper.CreateUsageIcon( null );
 		var prefix = m_IsDemoMode ? "[DEMO] " : string.Empty;
-		var label  = SettingsService.Load().Provider switch
+		var label  = m_ViewModel.Provider switch
 		{
 			Models.UsageProvider.GitHubCopilot => "Copilot",
 			Models.UsageProvider.Gemini        => "Gemini",
+			Models.UsageProvider.OpenAI        => "OpenAI",
 			_                                  => "Claude",
 		};
 		m_NotifyIcon.Text = $"{prefix}{label} — error fetching data";
@@ -319,11 +410,9 @@ internal sealed class TrayApplicationContext : IDisposable
 
 	internal void SwitchProvider( Models.UsageProvider provider )
 	{
-		var settings = SettingsService.Load();
-		if ( settings.Provider == provider ) return;
-		settings.Provider = provider;
-		SettingsService.Save( settings );
-		RestartTimer();
+		if ( m_ViewModel.Provider == provider ) return;
+		m_ViewModel.Provider = provider;
+		UpdateTrayIcon();
 		_ = RefreshAsync();
 	}
 

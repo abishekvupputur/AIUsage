@@ -116,6 +116,7 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			OnPropertyChanged( nameof( MonthProgressPercent ) );
 			OnPropertyChanged( nameof( MonthProgressSummary ) );
 			OnPropertyChanged( nameof( WeeklyResetSummary ) );
+			OnPropertyChanged( nameof( ShowWeeklyBar ) );
 			OnPropertyChanged( nameof( CatStateLabel ) );
 			OnPropertyChanged( nameof( CatStateName ) );
 			OnPropertyChanged( nameof( CopilotCreditsSummary ) );
@@ -130,7 +131,7 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			if ( !m_SessionResetsAt.HasValue ) return string.Empty;
 			var remaining = m_SessionResetsAt.Value - DateTimeOffset.Now;
 			if ( remaining <= TimeSpan.Zero ) return "Resetting soon";
-			if ( m_Provider == UsageProvider.GitHubCopilot && remaining.TotalDays >= 1 )
+			if ( remaining.TotalDays >= 1 && ( m_Provider == UsageProvider.GitHubCopilot || m_Provider == UsageProvider.OpenAI ) )
 			{
 				var days = Math.Max( 1, (int)Math.Ceiling( remaining.TotalDays ) );
 				return days == 1 ? "Resets in 1 day" : $"Resets in {days} days";
@@ -160,19 +161,20 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			OnPropertyChanged( nameof( MonthProgressSummary ) );
 			OnPropertyChanged( nameof( WeeklyColorZone ) );
 			OnPropertyChanged( nameof( CatStateName ) );
+			OnPropertyChanged( nameof( ShowWeeklyBar ) );
 		}
 	}
 
 	public int? WeeklyUsed
 	{
 		get => m_WeeklyUsed;
-		set { m_WeeklyUsed = value; OnPropertyChanged(); OnPropertyChanged( nameof( MonthProgressSummary ) ); }
+		set { m_WeeklyUsed = value; OnPropertyChanged(); OnPropertyChanged( nameof( MonthProgressSummary ) ); OnPropertyChanged( nameof( MonthProgressLabel ) ); OnPropertyChanged( nameof( ShowWeeklyBar ) ); }
 	}
 
 	public int? WeeklyLimit
 	{
 		get => m_WeeklyLimit;
-		set { m_WeeklyLimit = value; OnPropertyChanged(); OnPropertyChanged( nameof( MonthProgressSummary ) ); }
+		set { m_WeeklyLimit = value; OnPropertyChanged(); OnPropertyChanged( nameof( MonthProgressSummary ) ); OnPropertyChanged( nameof( MonthProgressLabel ) ); OnPropertyChanged( nameof( ShowWeeklyBar ) ); }
 	}
 
 	/// <summary>Returns "Green", "Yellow", or "Red" for the weekly bar colour trigger.</summary>
@@ -188,18 +190,19 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	{
 		get
 		{
-			if ( m_Provider != UsageProvider.GitHubCopilot )
+			if ( m_Provider == UsageProvider.GitHubCopilot )
 			{
-				return m_WeeklyPercent;
+				var ( elapsedDays, totalDays ) = GetCopilotMonthProgressDays();
+				return totalDays <= 0 ? 0 : Math.Clamp( elapsedDays * 100.0 / totalDays, 0, 100 );
 			}
 
-			var ( elapsedDays, totalDays ) = GetCopilotMonthProgressDays();
-			if ( totalDays <= 0 )
+			if ( m_Provider == UsageProvider.OpenAI && m_WeeklyPercent == 0 && m_WeeklyUsed == null )
 			{
-				return 0;
+				var ( elapsedDays, totalDays ) = GetOpenAIWeekProgressDays();
+				return totalDays <= 0 ? 0 : Math.Clamp( elapsedDays * 100.0 / totalDays, 0, 100 );
 			}
 
-			return Math.Clamp( elapsedDays * 100.0 / totalDays, 0, 100 );
+			return m_WeeklyPercent;
 		}
 	}
 
@@ -220,6 +223,13 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 					: creditsSummary;
 			}
 
+			if ( m_Provider == UsageProvider.OpenAI && m_WeeklyUsed == null && m_WeeklyLimit == null )
+			{
+				var ( elapsedDays, totalDays ) = GetOpenAIWeekProgressDays();
+				var pct = MonthProgressPercent;
+				return totalDays > 0 ? $"{elapsedDays} / {totalDays} days  ({pct:0}%)" : string.Empty;
+			}
+
 			return m_WeeklyUsed.HasValue && m_WeeklyLimit.HasValue
 				? $"{m_WeeklyUsed} / {m_WeeklyLimit}  ({m_WeeklyPercent:0}%)"
 				: $"{m_WeeklyPercent:0}% used";
@@ -227,7 +237,10 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	}
 
 	/// <summary>Static label used by existing XAML binding.</summary>
-	public string MonthProgressLabel => m_Provider == UsageProvider.GitHubCopilot ? "Month progress" : "Weekly Usage";
+	public string MonthProgressLabel =>
+		m_Provider == UsageProvider.GitHubCopilot                              ? "Month progress" :
+		m_Provider == UsageProvider.OpenAI && m_WeeklyUsed == null && m_WeeklyLimit == null ? "Week Progression" :
+		"Weekly Usage";
 
 	public string CopilotCreditsSummary
 	{
@@ -262,9 +275,11 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 		get
 		{
 			if ( m_Provider == UsageProvider.GitHubCopilot )
-			{
 				return ResetAtSummary;
-			}
+
+			// Week Progression mode — no reset label on this bar
+			if ( m_Provider == UsageProvider.OpenAI && m_WeeklyResetsAt == null )
+				return string.Empty;
 
 			if ( !m_WeeklyResetsAt.HasValue ) return string.Empty;
 			var local = m_WeeklyResetsAt.Value.ToLocalTime();
@@ -389,11 +404,20 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	{
 		UsageProvider.GitHubCopilot => "GitHub Copilot Usage",
 		UsageProvider.Gemini        => "Gemini Usage",
+		UsageProvider.OpenAI        => "OpenAI Codex Usage",
 		_                           => "Claude AI Usage",
 	};
 
-	public string SessionBarLabel => m_Provider == UsageProvider.GitHubCopilot ? "Monthly interactions" : "Current session";
-	public bool ShowWeeklyBar      => m_Provider != UsageProvider.Gemini;
+	public string SessionBarLabel => m_Provider switch
+	{
+		UsageProvider.GitHubCopilot => "Monthly interactions",
+		UsageProvider.OpenAI        => "Weekly rate limit",
+		_                           => "Current session",
+	};
+
+	public bool ShowWeeklyBar      => m_Provider != UsageProvider.Gemini
+	                                && ( m_WeeklyUsed != null || m_WeeklyLimit != null || m_WeeklyPercent > 0
+	                                     || ( m_Provider == UsageProvider.OpenAI && m_SessionResetsAt.HasValue ) );
 	public bool ShowStandardBars   => m_Provider != UsageProvider.Gemini;
 	public bool ShowGeminiBuckets  => m_Provider == UsageProvider.Gemini && m_GeminiBuckets.Count > 0;
 	public bool ShowGeminiSingleList => ShowGeminiBuckets && m_GeminiBuckets.Count <= 4;
@@ -437,6 +461,16 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 		return (elapsedDays, totalDays);
 	}
 
+	private (int ElapsedDays, int TotalDays) GetOpenAIWeekProgressDays()
+	{
+		if ( !m_SessionResetsAt.HasValue ) return (0, 0);
+		var cycleEnd   = m_SessionResetsAt.Value;
+		var cycleStart = cycleEnd.AddDays( -7 );
+		var now        = DateTimeOffset.Now;
+		var elapsed    = (int)Math.Ceiling( ( now - cycleStart ).TotalDays );
+		return ( Math.Clamp( elapsed, 0, 7 ), 7 );
+	}
+
 	private (int RemainingCredits, int RemainingDays, double CreditsPerDay)? GetCopilotCreditBudget()
 	{
 		if ( !m_SessionUsed.HasValue || !m_SessionLimit.HasValue || !m_SessionResetsAt.HasValue )
@@ -462,12 +496,12 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 
 	private string GetCatStateName()
 	{
-		if ( m_Provider == UsageProvider.GitHubCopilot )
+		if ( m_Provider == UsageProvider.GitHubCopilot || m_Provider == UsageProvider.OpenAI )
 		{
-			var copilotState = GetCopilotCatStateName();
-			if ( !string.IsNullOrEmpty( copilotState ) )
+			var paceState = GetPaceCatStateName();
+			if ( !string.IsNullOrEmpty( paceState ) )
 			{
-				return copilotState;
+				return paceState;
 			}
 		}
 
@@ -478,7 +512,7 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			"strolling";
 	}
 
-	private string? GetCopilotCatStateName()
+	private string? GetPaceCatStateName()
 	{
 		if ( !m_SessionUsed.HasValue || !m_SessionLimit.HasValue )
 		{
@@ -490,27 +524,25 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			return "sleeping";
 		}
 
-		var ( elapsedDays, totalDays ) = GetCopilotMonthProgressDays();
-		if ( elapsedDays <= 0 || totalDays <= 0 )
+		if ( m_Provider == UsageProvider.GitHubCopilot )
 		{
-			return null;
-		}
+			var ( elapsedDays, totalDays ) = GetCopilotMonthProgressDays();
+			if ( elapsedDays <= 0 || totalDays <= 0 )
+			{
+				return null;
+			}
 
-		var expectedUsed = m_SessionLimit.Value * elapsedDays / (double)totalDays;
-		var paceRatio = expectedUsed <= 0 ? 0 : m_SessionUsed.Value / expectedUsed;
-		if ( paceRatio >= 1.35 )
-		{
-			return "tired";
+			var expectedUsed = m_SessionLimit.Value * elapsedDays / (double)totalDays;
+			var paceRatio = expectedUsed <= 0 ? 0 : m_SessionUsed.Value / expectedUsed;
+			if ( paceRatio >= 1.35 ) return "tired";
+			if ( paceRatio >= 1.10 ) return "meow";
+			if ( paceRatio <= 0.50 ) return "attention";
 		}
-
-		if ( paceRatio >= 1.10 )
+		else if ( m_Provider == UsageProvider.OpenAI )
 		{
-			return "meow";
-		}
-
-		if ( paceRatio <= 0.50 )
-		{
-			return "attention";
+			if ( m_UsagePercent >= 80 ) return "tired";
+			if ( m_UsagePercent >= 60 ) return "meow";
+			if ( m_UsagePercent <= 10 ) return "attention";
 		}
 
 		return "strolling";
@@ -549,7 +581,12 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 
 		if ( data.IsUnavailable )
 		{
-			var name = provider == UsageProvider.GitHubCopilot ? "GitHub Copilot" : "Claude";
+			var name = provider switch
+			{
+				UsageProvider.GitHubCopilot => "GitHub Copilot",
+				UsageProvider.OpenAI        => "OpenAI",
+				_                           => "Claude",
+			};
 			ErrorMessage = string.IsNullOrEmpty( data.RawJson )
 				? $"{name} usage data is not available. The API response format may have changed."
 				: $"Could not parse usage from API response:\n{data.RawJson}";

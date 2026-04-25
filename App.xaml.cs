@@ -27,9 +27,13 @@ public partial class App : System.Windows.Application
 		{
 			var settings = SettingsService.Load();
 
-			bool isConfigured = settings.Provider == Models.UsageProvider.GitHubCopilot
-				? !string.IsNullOrWhiteSpace( settings.GitHubToken )
-				: !string.IsNullOrWhiteSpace( settings.SessionKey );
+			bool isConfigured = settings.SelectedProviders.All( p => p switch
+			{
+				Models.UsageProvider.GitHubCopilot => !string.IsNullOrWhiteSpace( settings.GitHubToken ),
+				Models.UsageProvider.OpenAI        => !string.IsNullOrWhiteSpace( settings.OpenAIToken ),
+				Models.UsageProvider.Gemini        => !string.IsNullOrWhiteSpace( settings.GeminiClientId ),
+				_                                  => !string.IsNullOrWhiteSpace( settings.SessionKey ),
+			} );
 
 			if ( !isConfigured )
 			{

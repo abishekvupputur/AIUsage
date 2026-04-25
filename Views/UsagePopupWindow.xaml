@@ -274,6 +274,8 @@
                             Click="ClaudeProvider_Click"/>
                     <Button x:Name="CopilotProviderBtn" Content="Copilot" Margin="0,0,4,0"
                             Click="CopilotProvider_Click"/>
+                    <Button x:Name="OpenAIProviderBtn" Content="OpenAI" Margin="0,0,4,0"
+                            Click="OpenAIProvider_Click"/>
                     <Button x:Name="GeminiProviderBtn" Content="Gemini"
                             Click="GeminiProvider_Click"/>
                 </StackPanel>
