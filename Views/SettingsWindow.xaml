@@ -196,6 +196,48 @@
             </Setter>
         </Style>
 
+        <!-- Selectable Text Style (TextBox looking like a TextBlock) -->
+        <Style x:Key="SelectableTextBlock" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="CaretBrush" Value="Transparent"/>
+            <Setter Property="SelectionBrush" Value="#D4845A"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Background="Transparent" Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Selectable RichText Style (RichTextBox looking like a TextBlock) -->
+        <Style x:Key="SelectableRichTextBlock" TargetType="RichTextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="CaretBrush" Value="Transparent"/>
+            <Setter Property="SelectionBrush" Value="#D4845A"/>
+            <Setter Property="IsDocumentEnabled" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RichTextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Background="Transparent" Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Provider tab control -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
@@ -283,38 +325,41 @@
                         <TextBlock Text="Claude Session Key" FontWeight="SemiBold"
                                    FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
-                        <TextBlock Text="How to get your session key:" FontWeight="SemiBold"
-                                   FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
+                        <TextBox Text="How to get your session key:" Style="{StaticResource SelectableTextBlock}"
+                                   FontWeight="SemiBold" FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
 
-                        <StackPanel Margin="0,0,0,10">
-                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
-                                <Run Text="1.  Open "/>
-                                <Run Text="claude.ai" FontWeight="SemiBold" Foreground="#D4845A"/>
-                                <Run Text=" in your browser and sign in"/>
-                            </TextBlock>
-                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
-                                <Run Text="2.  Press "/>
-                                <Run Text="F12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                                <Run Text="  →  Application  →  Cookies  →  https://claude.ai"/>
-                            </TextBlock>
-                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
-                                <Run Text="3.  Find the row named "/>
-                                <Run Text="sessionKey" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                                <Run Text=" and double-click its Value cell"/>
-                            </TextBlock>
-                            <TextBlock FontSize="12" Foreground="#888888">
-                                <Run Text="4.  Press "/>
-                                <Run Text="Ctrl+A" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                                <Run Text=" to select all, then "/>
-                                <Run Text="Ctrl+C" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                                <Run Text=" to copy — the value is very long"/>
-                            </TextBlock>
-                        </StackPanel>
+                        <RichTextBox Style="{StaticResource SelectableRichTextBlock}" Margin="0,0,0,10">
+                            <FlowDocument>
+                                <Paragraph FontSize="12" Foreground="#888888" Margin="0,0,0,3">
+                                    <Run Text="1.  Open "/>
+                                    <Run Text="claude.ai" FontWeight="SemiBold" Foreground="#D4845A"/>
+                                    <Run Text=" in your browser and sign in"/>
+                                </Paragraph>
+                                <Paragraph FontSize="12" Foreground="#888888" Margin="0,0,0,3">
+                                    <Run Text="2.  Press "/>
+                                    <Run Text="F12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                    <Run Text="  →  Application  →  Cookies  →  https://claude.ai"/>
+                                </Paragraph>
+                                <Paragraph FontSize="12" Foreground="#888888" Margin="0,0,0,3">
+                                    <Run Text="3.  Find the row named "/>
+                                    <Run Text="sessionKey" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                    <Run Text=" and double-click its Value cell"/>
+                                </Paragraph>
+                                <Paragraph FontSize="12" Foreground="#888888">
+                                    <Run Text="4.  Press "/>
+                                    <Run Text="Ctrl+A" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                    <Run Text=" to select all, then "/>
+                                    <Run Text="Ctrl+C" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                    <Run Text=" to copy — the value is very long"/>
+                                </Paragraph>
+                            </FlowDocument>
+                        </RichTextBox>
 
                         <DockPanel Margin="0,0,0,5">
                             <TextBlock Text="Session Key:" FontSize="12" FontWeight="SemiBold"
                                        Foreground="#EBEBEB" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="KeyLengthHint" DockPanel.Dock="Right"
+                            <TextBox x:Name="KeyLengthHint" Style="{StaticResource SelectableTextBlock}"
+                                       DockPanel.Dock="Right"
                                        FontSize="11" Foreground="#555555" VerticalAlignment="Center"
                                        HorizontalAlignment="Right"/>
                         </DockPanel>
@@ -338,8 +383,8 @@
                                     Click="TestButton_Click"/>
                         </Grid>
 
-                        <TextBlock x:Name="AuthStatusText"
-                                   Text="" TextWrapping="Wrap"
+                        <TextBox x:Name="AuthStatusText" Style="{StaticResource SelectableTextBlock}"
+                                   Text=""
                                    FontSize="12" Margin="0,8,0,0"
                                    Foreground="#888888"
                                    Visibility="Collapsed"/>
@@ -375,7 +420,8 @@
 
                     <!-- Connected state -->
                     <StackPanel x:Name="CopilotConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
-                        <TextBlock x:Name="CopilotConnectedText" FontSize="12" Foreground="#3FB950"
+                        <TextBox x:Name="CopilotConnectedText" Style="{StaticResource SelectableTextBlock}"
+                                   FontSize="12" Foreground="#3FB950"
                                    Margin="0,0,0,8"/>
                         <Button x:Name="CopilotDisconnectButton" Content="Disconnect"
                                 Width="110" HorizontalAlignment="Left" Padding="0,6"
@@ -393,12 +439,14 @@
                             <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
                                 Open the URL below and enter the code to authorise:
                             </TextBlock>
-                            <TextBlock x:Name="CopilotVerificationUrl" FontSize="12" Foreground="#D4845A"
-                                       Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
+                            <TextBox x:Name="CopilotVerificationUrl" Style="{StaticResource SelectableTextBlock}"
+                                     FontSize="12" Foreground="#D4845A"
+                                     Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
                             <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
-                            <TextBlock x:Name="CopilotUserCode" FontSize="20" FontWeight="Bold"
-                                       Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
-                                       Margin="0,0,0,8"/>
+                            <TextBox x:Name="CopilotUserCode" Style="{StaticResource SelectableTextBlock}"
+                                     FontSize="20" FontWeight="Bold"
+                                     Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
+                                     Margin="0,0,0,8"/>
                             <Button x:Name="CopilotCancelButton" Content="Cancel"
                                     Width="80" HorizontalAlignment="Left" Padding="0,6"
                                     Style="{StaticResource GhostButtonStyle}"
@@ -406,8 +454,8 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <TextBlock x:Name="CopilotStatusText"
-                               Text="" TextWrapping="Wrap"
+                    <TextBox x:Name="CopilotStatusText" Style="{StaticResource SelectableTextBlock}"
+                               Text=""
                                FontSize="12" Margin="0,8,0,0"
                                Foreground="#888888"
                                Visibility="Collapsed"/>
@@ -442,7 +490,8 @@
 
                     <!-- Connected state -->
                     <StackPanel x:Name="OpenAIConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
-                        <TextBlock x:Name="OpenAIConnectedText" FontSize="12" Foreground="#3FB950"
+                        <TextBox x:Name="OpenAIConnectedText" Style="{StaticResource SelectableTextBlock}"
+                                   FontSize="12" Foreground="#3FB950"
                                    Margin="0,0,0,8"/>
                         <Button x:Name="OpenAIDisconnectButton" Content="Disconnect"
                                 Width="110" HorizontalAlignment="Left" Padding="0,6"
@@ -460,12 +509,14 @@
                             <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
                                 Open the URL below and enter the code to authorise:
                             </TextBlock>
-                            <TextBlock x:Name="OpenAIVerificationUrl" FontSize="12" Foreground="#D4845A"
-                                       Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
+                            <TextBox x:Name="OpenAIVerificationUrl" Style="{StaticResource SelectableTextBlock}"
+                                     FontSize="12" Foreground="#D4845A"
+                                     Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
                             <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
-                            <TextBlock x:Name="OpenAIUserCode" FontSize="20" FontWeight="Bold"
-                                       Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
-                                       Margin="0,0,0,8"/>
+                            <TextBox x:Name="OpenAIUserCode" Style="{StaticResource SelectableTextBlock}"
+                                     FontSize="20" FontWeight="Bold"
+                                     Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
+                                     Margin="0,0,0,8"/>
                             <Button x:Name="OpenAICancelButton" Content="Cancel"
                                     Width="80" HorizontalAlignment="Left" Padding="0,6"
                                     Style="{StaticResource GhostButtonStyle}"
@@ -473,8 +524,8 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <TextBlock x:Name="OpenAIStatusText"
-                               Text="" TextWrapping="Wrap"
+                    <TextBox x:Name="OpenAIStatusText" Style="{StaticResource SelectableTextBlock}"
+                               Text=""
                                FontSize="12" Margin="0,8,0,0"
                                Foreground="#888888"
                                Visibility="Collapsed"/>
@@ -512,13 +563,13 @@
                     <TextBlock Text="Gemini Auth" FontWeight="SemiBold"
                                FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
-                    <TextBlock Text="How to set up:" FontWeight="SemiBold"
-                               FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
+                    <TextBox Text="How to set up:" Style="{StaticResource SelectableTextBlock}"
+                               FontWeight="SemiBold" FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
 
-                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10"
-                                  Padding="0,0,6,0">
-                        <ScrollViewer.Resources>
+                    <RichTextBox Style="{StaticResource SelectableRichTextBlock}" IsDocumentEnabled="True"
+                                  MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10">
+                        <RichTextBox.Resources>
                             <Style TargetType="ScrollBar">
                                 <Setter Property="Width" Value="5"/>
                                 <Setter Property="Background" Value="Transparent"/>
@@ -556,64 +607,96 @@
                                     </Setter.Value>
                                 </Setter>
                             </Style>
-                        </ScrollViewer.Resources>
-                        <StackPanel>
-                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 1 — Find Client ID and Secret</TextBlock>
-                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
-                                On any PC with <Run FontWeight="SemiBold" Foreground="#EBEBEB">gemini-cli</Run> installed via npm, run in PowerShell:
-                            </TextBlock>
-                            <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
-                                <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
-                                           xml:space="preserve">$npmGlobal = npm root -g
+                        </RichTextBox.Resources>
+                        <FlowDocument>
+                            <Paragraph>
+                                <Run FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Text="Step 1 — Find Client ID and Secret"/>
+                            </Paragraph>
+                            <Paragraph>
+                                <Run FontSize="12" Foreground="#888888" Text="On any PC with "/>
+                                <Run FontSize="12" FontWeight="SemiBold" Foreground="#EBEBEB" Text="gemini-cli"/>
+                                <Run FontSize="12" Foreground="#888888" Text=" installed via npm, run in PowerShell:"/>
+                            </Paragraph>
+
+                            <BlockUIContainer>
+                                <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
+                                    <TextBox Style="{StaticResource SelectableTextBlock}"
+                                             FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA"
+                                             xml:space="preserve">$npmGlobal = npm root -g
 Select-String "OAUTH_CLIENT_ID|OAUTH_CLIENT_SECRET" `
   "$npmGlobal\@google\gemini-cli\bundle\chunk-*.js" `
-  | Select-Object -First 4</TextBlock>
-                            </Border>
-                            <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,10" TextWrapping="Wrap">
-                                Copy the two values from the output.
-                            </TextBlock>
+  | Select-Object -First 4</TextBox>
+                                </Border>
+                            </BlockUIContainer>
 
-                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 2 — Get Refresh Token</TextBlock>
-                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
-                                Run <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">gemini</Run> once to log in, then extract the token:
-                            </TextBlock>
-                            <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
-                                <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
-                                           xml:space="preserve">gemini   # log in, then Ctrl+C
+                            <Paragraph>
+                                <Run FontSize="11" Foreground="#888888" Text="Copy the two values from the output."/>
+                            </Paragraph>
+
+                            <Paragraph>
+                                <Run FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Text="Step 2 — Get Refresh Token"/>
+                            </Paragraph>
+                            <Paragraph>
+                                <Run FontSize="12" Foreground="#888888" Text="Run "/>
+                                <Run FontSize="12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB" Text="gemini"/>
+                                <Run FontSize="12" Foreground="#888888" Text=" once to log in, then extract the token:"/>
+                            </Paragraph>
+
+                            <BlockUIContainer>
+                                <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
+                                    <TextBox Style="{StaticResource SelectableTextBlock}"
+                                             FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA"
+                                             xml:space="preserve">gemini   # log in, then Ctrl+C
 
 $creds = Get-Content "$env:USERPROFILE\.gemini\oauth_creds.json" | ConvertFrom-Json
-$creds.refresh_token   # copy this value</TextBlock>
-                            </Border>
-                            <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,10" TextWrapping="Wrap">
-                                Token is tied to your Google account, not the machine. Treat it like a password.
-                            </TextBlock>
+$creds.refresh_token   # copy this value</TextBox>
+                                </Border>
+                            </BlockUIContainer>
 
-                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 3 — Creds file on this PC</TextBlock>
-                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
-                                If <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">gemini-cli</Run> is installed here,
-                                <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">%USERPROFILE%\.gemini\oauth_creds.json</Run> already exists — use it directly.
-                                Otherwise create it manually:
-                            </TextBlock>
-                            <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
-                                <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
-                                           xml:space="preserve">New-Item -ItemType Directory -Force "$env:USERPROFILE\.gemini"
+                            <Paragraph>
+                                <Run FontSize="11" Foreground="#888888" Text="Token is tied to your Google account, not the machine. Treat it like a password."/>
+                            </Paragraph>
+
+                            <Paragraph>
+                                <Run FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Text="Step 3 — Creds file on this PC"/>
+                            </Paragraph>
+                            <Paragraph>
+                                <Run FontSize="12" Foreground="#888888" Text="If "/>
+                                <Run FontSize="12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB" Text="gemini-cli"/>
+                                <Run FontSize="12" Foreground="#888888" Text=" is installed here, "/>
+                                <Run FontSize="12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB" Text="%USERPROFILE%\.gemini\oauth_creds.json"/>
+                                <Run FontSize="12" Foreground="#888888" Text=" already exists — use it directly. Otherwise create it manually:"/>
+                            </Paragraph>
+
+                            <BlockUIContainer>
+                                <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
+                                    <TextBox Style="{StaticResource SelectableTextBlock}"
+                                             FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA"
+                                             xml:space="preserve">New-Item -ItemType Directory -Force "$env:USERPROFILE\.gemini"
 
 @{ refresh_token = "PASTE_TOKEN_HERE" } `
   | ConvertTo-Json `
-  | Set-Content "$env:USERPROFILE\.gemini\oauth_creds.json"</TextBlock>
-                            </Border>
+  | Set-Content "$env:USERPROFILE\.gemini\oauth_creds.json"</TextBox>
+                                </Border>
+                            </BlockUIContainer>
 
-                            <Border Background="#1E1A10" BorderBrush="#4A3A10" BorderThickness="1"
-                                    CornerRadius="3" Padding="7,6" Margin="0,6,0,2">
-                                <TextBlock FontSize="11" Foreground="#D4A72C" TextWrapping="Wrap">
-                                    <Run FontWeight="SemiBold">Note:</Run>
-                                    <Run>Refresh token invalidates if you revoke access at</Run>
-                                    <Run FontFamily="Cascadia Code, Consolas" Foreground="#EBEBEB">myaccount.google.com → Security → Third-party apps → Gemini CLI</Run>
-                                    <Run>. Re-run Step 2 after re-authorising.</Run>
-                                </TextBlock>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
+                            <BlockUIContainer>
+                                <Border Background="#1E1A10" BorderBrush="#4A3A10" BorderThickness="1"
+                                        CornerRadius="3" Padding="7,6" Margin="0,6,0,2">
+                                    <RichTextBox Style="{StaticResource SelectableRichTextBlock}">
+                                        <FlowDocument>
+                                            <Paragraph>
+                                                <Run FontSize="11" Foreground="#D4A72C" FontWeight="SemiBold" Text="Note:"/>
+                                                <Run FontSize="11" Foreground="#D4A72C" Text=" Refresh token invalidates if you revoke access at "/>
+                                                <Run FontSize="11" FontFamily="Cascadia Code, Consolas" Foreground="#EBEBEB" Text="myaccount.google.com → Security → Third-party apps → Gemini CLI"/>
+                                                <Run FontSize="11" Foreground="#D4A72C" Text=". Re-run Step 2 after re-authorising."/>
+                                            </Paragraph>
+                                        </FlowDocument>
+                                    </RichTextBox>
+                                </Border>
+                            </BlockUIContainer>
+                        </FlowDocument>
+                    </RichTextBox>
 
                     <Separator Margin="0,0,0,12" Background="#2E2E2E" BorderBrush="#2E2E2E"/>
 
@@ -652,8 +735,8 @@ $creds.refresh_token   # copy this value</TextBlock>
                             Width="140" HorizontalAlignment="Left" Padding="0,6"
                             Click="GeminiTest_Click"/>
 
-                    <TextBlock x:Name="GeminiStatusText"
-                               Text="" TextWrapping="Wrap"
+                    <TextBox x:Name="GeminiStatusText" Style="{StaticResource SelectableTextBlock}"
+                               Text=""
                                FontSize="12" Margin="0,8,0,0"
                                Foreground="#888888"
                                Visibility="Collapsed"/>

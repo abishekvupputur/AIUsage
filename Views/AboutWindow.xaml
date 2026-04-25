@@ -33,6 +33,26 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="SelectableTextBlock" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="CaretBrush" Value="Transparent"/>
+            <Setter Property="SelectionBrush" Value="#D4845A"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Background="Transparent" Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <StackPanel Margin="24,24,24,24" TextElement.FontFamily="Segoe UI">
@@ -48,12 +68,13 @@
         <TextBlock Text="Version 1.0" Foreground="#555555" FontSize="12"
                    HorizontalAlignment="Center" Margin="0,0,0,14"/>
 
-        <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center"
+        <TextBox Style="{StaticResource SelectableTextBlock}"
+                   HorizontalAlignment="Center"
                    Foreground="#888888" FontSize="12" Margin="0,0,0,14"
                    TextAlignment="Center">
             Shows quota usage for Claude, GitHub Copilot, OpenAI Codex, and Gemini
             in the system tray, refreshed automatically.
-        </TextBlock>
+        </TextBox>
 
         <TextBlock HorizontalAlignment="Center" Foreground="#888888" FontSize="12" Margin="0,0,0,4">
             Created by TobiasW &amp; Abishek Narasimhan
