@@ -75,6 +75,12 @@ public partial class SettingsWindow : Window
 		GeminiEnableCheck.IsEnabled = hasGemini;
 		GeminiEnableCheck.IsChecked = hasGemini && settings.SelectedProviders.Contains( UsageProvider.Gemini );
 
+		// Gemini display mode
+		var modeTag = settings.GeminiDisplayMode.ToString();
+		foreach ( ComboBoxItem item in GeminiDisplayModeCombo.Items )
+			if ( item.Tag is string t && t == modeTag ) { GeminiDisplayModeCombo.SelectedItem = item; break; }
+		if ( GeminiDisplayModeCombo.SelectedItem == null ) GeminiDisplayModeCombo.SelectedIndex = 0;
+
 		// Refresh intervals
 		SelectInterval( ClaudeIntervalCombo,  settings.ClaudeRefreshIntervalMinutes );
 		SelectInterval( CopilotIntervalCombo, settings.CopilotRefreshIntervalMinutes );
@@ -447,6 +453,10 @@ public partial class SettingsWindow : Window
 		settings.CopilotRefreshIntervalMinutes = ReadInterval( CopilotIntervalCombo, 15 );
 		settings.OpenAIRefreshIntervalMinutes  = ReadInterval( OpenAIIntervalCombo,  15 );
 		settings.GeminiRefreshIntervalMinutes  = ReadInterval( GeminiIntervalCombo,  15 );
+
+		if ( GeminiDisplayModeCombo.SelectedItem is ComboBoxItem { Tag: string modeStr }
+		     && Enum.TryParse<GeminiDisplayMode>( modeStr, out var mode ) )
+			settings.GeminiDisplayMode = mode;
 
 		settings.StartWithWindows = StartupCheckBox.IsChecked == true;
 

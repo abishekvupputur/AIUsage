@@ -311,8 +311,13 @@
                 <!-- Bars column -->
                 <StackPanel Grid.Column="2">
 
-                    <!-- Gemini: single list (≤ 4 models) -->
-                    <ItemsControl ItemsSource="{Binding GeminiBuckets}"
+                    <!-- Gemini: simplified 3-bar view (>4 buckets, similar usage across types) -->
+                    <ItemsControl ItemsSource="{Binding GeminiSimplifiedBuckets}"
+                                  ItemTemplate="{StaticResource GeminiBucketTemplate}"
+                                  Visibility="{Binding ShowGeminiSimplified, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                    <!-- Gemini: single list (≤ 4 models, or V2Only/V3Only filter) -->
+                    <ItemsControl ItemsSource="{Binding GeminiBucketsFiltered}"
                                   ItemTemplate="{StaticResource GeminiBucketTemplate}"
                                   Visibility="{Binding ShowGeminiSingleList, Converter={StaticResource BoolToVisibilityConverter}}"/>
 

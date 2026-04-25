@@ -498,6 +498,16 @@
                 <StackPanel Margin="14,12">
                     <CheckBox x:Name="GeminiEnableCheck" Content="Show in tray application"
                               IsEnabled="False" Margin="0,0,0,8"/>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="Display:" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="GeminiDisplayModeCombo" Width="220" HorizontalAlignment="Right" FontSize="11">
+                            <ComboBoxItem Content="Auto (simplify when usage is similar)" Tag="Auto"/>
+                            <ComboBoxItem Content="Simplified (always 3 bars)"            Tag="Simplified"/>
+                            <ComboBoxItem Content="All models (tabbed by version)"         Tag="All"/>
+                            <ComboBoxItem Content="Gemini 2.x only"                        Tag="V2Only"/>
+                            <ComboBoxItem Content="Gemini 3.x only"                        Tag="V3Only"/>
+                        </ComboBox>
+                    </DockPanel>
                     <Separator Margin="0,0,0,12" Background="#333333" BorderBrush="#333333"/>
                     <TextBlock Text="Gemini Auth" FontWeight="SemiBold"
                                FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>

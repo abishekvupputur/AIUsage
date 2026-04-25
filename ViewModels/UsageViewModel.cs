@@ -27,6 +27,7 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	private bool m_IsDemoMode;
 	private UsageProvider m_Provider = UsageProvider.Claude;
 	private List<GeminiQuotaBucket> m_GeminiBuckets = [];
+	private GeminiDisplayMode m_GeminiDisplayMode = GeminiDisplayMode.Auto;
 
 
 	// ── Session (primary bar + tray icon) ──────────────────────────────────────
@@ -419,9 +420,54 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	                                && ( m_WeeklyUsed != null || m_WeeklyLimit != null || m_WeeklyPercent > 0
 	                                     || ( m_Provider == UsageProvider.OpenAI && m_SessionResetsAt.HasValue ) );
 	public bool ShowStandardBars   => m_Provider != UsageProvider.Gemini;
-	public bool ShowGeminiBuckets  => m_Provider == UsageProvider.Gemini && m_GeminiBuckets.Count > 0;
-	public bool ShowGeminiSingleList => ShowGeminiBuckets && m_GeminiBuckets.Count <= 4;
-	public bool ShowGeminiTabs       => ShowGeminiBuckets && m_GeminiBuckets.Count >  4;
+	public GeminiDisplayMode GeminiDisplayMode
+	{
+		get => m_GeminiDisplayMode;
+		set
+		{
+			m_GeminiDisplayMode = value;
+			OnPropertyChanged();
+			FireGeminiVisibility();
+		}
+	}
+
+	private void FireGeminiVisibility()
+	{
+		OnPropertyChanged( nameof( ShowGeminiBuckets ) );
+		OnPropertyChanged( nameof( ShowGeminiSimplified ) );
+		OnPropertyChanged( nameof( ShowGeminiSingleList ) );
+		OnPropertyChanged( nameof( ShowGeminiTabs ) );
+		OnPropertyChanged( nameof( GeminiSimplifiedBuckets ) );
+		OnPropertyChanged( nameof( GeminiBucketsFiltered ) );
+	}
+
+	public bool ShowGeminiBuckets => m_Provider == UsageProvider.Gemini && m_GeminiBuckets.Count > 0;
+
+	public bool ShowGeminiSimplified => ShowGeminiBuckets && m_GeminiDisplayMode switch
+	{
+		GeminiDisplayMode.Simplified => true,
+		GeminiDisplayMode.Auto       => m_GeminiBuckets.Count > 4 && ( ComputeGeminiSimplified()?.Count > 0 ),
+		_                            => false,
+	};
+
+	public bool ShowGeminiSingleList => ShowGeminiBuckets && !ShowGeminiSimplified
+		&& ( m_GeminiDisplayMode == GeminiDisplayMode.V2Only
+		  || m_GeminiDisplayMode == GeminiDisplayMode.V3Only
+		  || GeminiBucketsFiltered.Count <= 4 );
+
+	public bool ShowGeminiTabs => ShowGeminiBuckets && !ShowGeminiSimplified
+		&& m_GeminiDisplayMode != GeminiDisplayMode.V2Only
+		&& m_GeminiDisplayMode != GeminiDisplayMode.V3Only
+		&& GeminiBucketsFiltered.Count > 4;
+
+	public List<GeminiQuotaBucket> GeminiBucketsFiltered => m_GeminiDisplayMode switch
+	{
+		GeminiDisplayMode.V2Only => m_GeminiBuckets.Where( b => b.ModelId.StartsWith( "gemini-2", StringComparison.OrdinalIgnoreCase ) ).ToList(),
+		GeminiDisplayMode.V3Only => m_GeminiBuckets.Where( b => b.ModelId.StartsWith( "gemini-3", StringComparison.OrdinalIgnoreCase ) ).ToList(),
+		_                        => m_GeminiBuckets,
+	};
+
+	public List<GeminiQuotaBucket> GeminiSimplifiedBuckets => ComputeGeminiSimplified() ?? [];
 
 	public List<GeminiQuotaBucket> GeminiV2Buckets =>
 		m_GeminiBuckets.Where( b => b.ModelId.StartsWith( "gemini-2", StringComparison.OrdinalIgnoreCase ) ).ToList();
@@ -436,13 +482,47 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 		{
 			m_GeminiBuckets = value;
 			OnPropertyChanged();
-			OnPropertyChanged( nameof( ShowGeminiBuckets ) );
-			OnPropertyChanged( nameof( ShowGeminiSingleList ) );
-			OnPropertyChanged( nameof( ShowGeminiTabs ) );
+			FireGeminiVisibility();
 			OnPropertyChanged( nameof( GeminiV2Buckets ) );
 			OnPropertyChanged( nameof( GeminiV3Buckets ) );
 		}
 	}
+
+	private List<GeminiQuotaBucket>? ComputeGeminiSimplified()
+	{
+		if ( m_GeminiBuckets.Count <= 4 ) return null;
+
+		var flashLite = m_GeminiBuckets.Where( b => b.ModelId.Contains( "flash-lite",  StringComparison.OrdinalIgnoreCase ) ).ToList();
+		var flash     = m_GeminiBuckets.Where( b => b.ModelId.Contains( "flash",       StringComparison.OrdinalIgnoreCase )
+		                                         && !b.ModelId.Contains( "flash-lite", StringComparison.OrdinalIgnoreCase ) ).ToList();
+		var pro       = m_GeminiBuckets.Where( b => b.ModelId.Contains( "pro",         StringComparison.OrdinalIgnoreCase ) ).ToList();
+
+		if ( flash.Count == 0 || flashLite.Count == 0 || pro.Count == 0 ) return null;
+		if ( !IsSimilarGroup( flash ) || !IsSimilarGroup( flashLite ) || !IsSimilarGroup( pro ) ) return null;
+
+		return
+		[
+			MergeGroup( flashLite, "Flash Lite" ),
+			MergeGroup( flash,     "Flash"      ),
+			MergeGroup( pro,       "Pro"        ),
+		];
+	}
+
+	private static bool IsSimilarGroup( List<GeminiQuotaBucket> group )
+	{
+		if ( group.Count <= 1 ) return true;
+		var usageDelta = group.Max( b => b.UsedPercent ) - group.Min( b => b.UsedPercent );
+		var resetDelta = ( group.Max( b => b.ResetTime ) - group.Min( b => b.ResetTime ) ).TotalHours;
+		return usageDelta <= 5 && resetDelta <= 1;
+	}
+
+	private static GeminiQuotaBucket MergeGroup( List<GeminiQuotaBucket> group, string label ) =>
+		new()
+		{
+			ModelId           = label,
+			RemainingFraction = group.Average( b => b.RemainingFraction ),
+			ResetTime         = group.Max( b => b.ResetTime ),
+		};
 
 	private (int ElapsedDays, int TotalDays) GetCopilotMonthProgressDays()
 	{

@@ -186,7 +186,10 @@ internal sealed class TrayApplicationContext : IDisposable
 							settings.GeminiClientId, settings.GeminiClientSecret, settings.GeminiCredentialsPath )
 							.ConfigureAwait( true );
 						if ( activeProvider == provider )
+						{
+							m_ViewModel.GeminiDisplayMode = settings.GeminiDisplayMode;
 							m_ViewModel.UpdateFromGeminiData( buckets );
+						}
 					}
 					else if ( provider == Models.UsageProvider.OpenAI )
 					{
