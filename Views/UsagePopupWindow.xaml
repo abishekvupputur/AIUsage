@@ -166,45 +166,85 @@
 
                 <!-- Bars column -->
                 <StackPanel Grid.Column="2">
-                    <!-- Current Session bar -->
-                    <DockPanel Margin="0,0,0,5">
-                        <TextBlock Text="{Binding SessionBarLabel}" FontSize="11" Foreground="#C0C0C0"
-                                   VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                        <TextBlock Text="{Binding ResetAtSummary}" FontSize="10" Foreground="#888888"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                    </DockPanel>
-                    <ProgressBar Style="{StaticResource CopilotBarStyle}"
-                                 Value="{Binding UsagePercent, Mode=OneWay}"/>
-                    <TextBlock Text="{Binding UsageSummary}" FontSize="11" Foreground="#AAAAAA"
-                               Margin="0,4,0,12" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
 
-                    <!-- Weekly Usage bar — hidden for GitHub Copilot -->
-                    <StackPanel Visibility="{Binding ShowWeeklyBar, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <DockPanel Margin="0,0,0,5">
-                        <TextBlock Text="{Binding MonthProgressLabel}" FontSize="11" Foreground="#C0C0C0"
-                                   VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                        <TextBlock Text="{Binding WeeklyResetSummary}" FontSize="10" Foreground="#888888"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                    </DockPanel>
-                    <ProgressBar Style="{StaticResource WeeklyBarStyle}"
-                                 Value="{Binding MonthProgressPercent, Mode=OneWay}"/>
-                    <TextBlock Text="{Binding MonthProgressSummary}" FontSize="11" Foreground="#AAAAAA"
-                               Margin="0,4,0,12" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
-                    </StackPanel>
+                    <!-- Gemini model quota buckets — one bar per model -->
+                    <ItemsControl ItemsSource="{Binding GeminiBuckets}"
+                                  Visibility="{Binding ShowGeminiBuckets, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,10">
+                                    <DockPanel Margin="0,0,0,4">
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="#C0C0C0"
+                                                   VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                                        <TextBlock Text="{Binding ResetTimeSummary}" FontSize="10" Foreground="#888888"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                                    </DockPanel>
+                                    <ProgressBar Value="{Binding UsedPercent, Mode=OneWay}" Maximum="100" Height="6"
+                                                 Background="#2E2E2E" BorderThickness="0">
+                                        <ProgressBar.Style>
+                                            <Style TargetType="ProgressBar" BasedOn="{StaticResource UsageProgressBarStyle}">
+                                                <Setter Property="Foreground" Value="#3FB950"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ColorZone}" Value="Yellow">
+                                                        <Setter Property="Foreground" Value="#D4A72C"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ColorZone}" Value="Red">
+                                                        <Setter Property="Foreground" Value="#F47067"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ProgressBar.Style>
+                                    </ProgressBar>
+                                    <TextBlock Text="{Binding RemainingPercentSummary}" FontSize="11" Foreground="#AAAAAA"
+                                               Margin="0,3,0,0" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                    <!-- Extra Usage bar (pay-per-use credits) — only shown when enabled -->
-                    <StackPanel Visibility="{Binding ExtraUsageEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <!-- Standard bars (Claude / GitHub Copilot) — hidden for Gemini -->
+                    <StackPanel Visibility="{Binding ShowStandardBars, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <!-- Current Session bar -->
                         <DockPanel Margin="0,0,0,5">
-                            <TextBlock Text="Extra Usage (monthly)" FontSize="11" Foreground="#C0C0C0"
+                            <TextBlock Text="{Binding SessionBarLabel}" FontSize="11" Foreground="#C0C0C0"
                                        VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                            <TextBlock Text="Pay-per-use" FontSize="10" Foreground="#888888"
+                            <TextBlock Text="{Binding ResetAtSummary}" FontSize="10" Foreground="#888888"
                                        HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
                         </DockPanel>
-                        <ProgressBar Style="{StaticResource ExtraBarStyle}"
-                                     Value="{Binding ExtraPercent, Mode=OneWay}"/>
-                        <TextBlock Text="{Binding ExtraSummary}" FontSize="11" Foreground="#AAAAAA"
+                        <ProgressBar Style="{StaticResource CopilotBarStyle}"
+                                     Value="{Binding UsagePercent, Mode=OneWay}"/>
+                        <TextBlock Text="{Binding UsageSummary}" FontSize="11" Foreground="#AAAAAA"
                                    Margin="0,4,0,12" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
+
+                        <!-- Weekly Usage bar -->
+                        <StackPanel Visibility="{Binding ShowWeeklyBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <DockPanel Margin="0,0,0,5">
+                                <TextBlock Text="{Binding MonthProgressLabel}" FontSize="11" Foreground="#C0C0C0"
+                                           VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                                <TextBlock Text="{Binding WeeklyResetSummary}" FontSize="10" Foreground="#888888"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                            </DockPanel>
+                            <ProgressBar Style="{StaticResource WeeklyBarStyle}"
+                                         Value="{Binding MonthProgressPercent, Mode=OneWay}"/>
+                            <TextBlock Text="{Binding MonthProgressSummary}" FontSize="11" Foreground="#AAAAAA"
+                                       Margin="0,4,0,12" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
+                        </StackPanel>
+
+                        <!-- Extra Usage bar (pay-per-use credits) -->
+                        <StackPanel Visibility="{Binding ExtraUsageEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <DockPanel Margin="0,0,0,5">
+                                <TextBlock Text="Extra Usage (monthly)" FontSize="11" Foreground="#C0C0C0"
+                                           VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                                <TextBlock Text="Pay-per-use" FontSize="10" Foreground="#888888"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                            </DockPanel>
+                            <ProgressBar Style="{StaticResource ExtraBarStyle}"
+                                         Value="{Binding ExtraPercent, Mode=OneWay}"/>
+                            <TextBlock Text="{Binding ExtraSummary}" FontSize="11" Foreground="#AAAAAA"
+                                       Margin="0,4,0,12" HorizontalAlignment="Right" FontFamily="Segoe UI"/>
+                        </StackPanel>
                     </StackPanel>
+
                 </StackPanel>
             </Grid>
 

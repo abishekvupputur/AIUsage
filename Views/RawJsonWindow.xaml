@@ -9,15 +9,61 @@
         Background="#1A1A1A"
         Foreground="#EBEBEB">
 
-    <DockPanel Margin="16" TextElement.FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style x:Key="ProviderActiveStyle" TargetType="Button">
+            <Setter Property="Background" Value="#D4845A"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-        <!-- Header -->
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-            <Button DockPanel.Dock="Right" Content="Copy" Width="60" Padding="0,4"
-                    Background="#D4845A" Foreground="#1A1A1A" BorderThickness="0"
-                    FontWeight="SemiBold" Cursor="Hand"
-                    Click="CopyButton_Click">
-                <Button.Template>
+        <Style x:Key="ProviderInactiveStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2A2A2A"/>
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="BorderBrush" Value="#3A3A3A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#333333"/>
+                                <Setter Property="Foreground" Value="#EBEBEB"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CopyButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#D4845A"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}" CornerRadius="4"
                                 Padding="{TemplateBinding Padding}">
@@ -29,10 +75,26 @@
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
-                </Button.Template>
-            </Button>
-            <TextBlock x:Name="TitleText" Text="rate_limit_status" FontSize="13"
-                       FontWeight="SemiBold" Foreground="#EBEBEB" VerticalAlignment="Center"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="16" TextElement.FontFamily="Segoe UI">
+
+        <!-- Header -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <Button DockPanel.Dock="Right" Content="Copy" Width="60" Padding="0,4"
+                    Style="{StaticResource CopyButtonStyle}"
+                    Click="CopyButton_Click"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="ClaudeBtn"  Content="Claude"  Margin="0,0,6,0"
+                        Tag="Claude"  Click="ProviderBtn_Click"/>
+                <Button x:Name="CopilotBtn" Content="Copilot" Margin="0,0,6,0"
+                        Tag="Copilot" Click="ProviderBtn_Click"/>
+                <Button x:Name="GeminiBtn"  Content="Gemini"
+                        Tag="Gemini"  Click="ProviderBtn_Click"/>
+            </StackPanel>
         </DockPanel>
 
         <!-- Loading / error banner -->
@@ -47,6 +109,46 @@
         <!-- JSON text area -->
         <Border Background="#111111" BorderBrush="#333333" BorderThickness="1" CornerRadius="4">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <ScrollViewer.Resources>
+                    <Style TargetType="ScrollBar">
+                        <Setter Property="Width" Value="5"/>
+                        <Setter Property="Height" Value="5"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ScrollBar">
+                                    <Grid Background="Transparent">
+                                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                            <Track.DecreaseRepeatButton>
+                                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Width="0" Height="0"/>
+                                            </Track.DecreaseRepeatButton>
+                                            <Track.Thumb>
+                                                <Thumb>
+                                                    <Thumb.Template>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Border x:Name="Bg" Background="#3A3A3A" CornerRadius="3"/>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="#555555"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsDragging" Value="True">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="#D4845A"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Thumb.Template>
+                                                </Thumb>
+                                            </Track.Thumb>
+                                            <Track.IncreaseRepeatButton>
+                                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Width="0" Height="0"/>
+                                            </Track.IncreaseRepeatButton>
+                                        </Track>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ScrollViewer.Resources>
                 <TextBox x:Name="JsonTextBox"
                          IsReadOnly="True"
                          FontFamily="Consolas" FontSize="12"

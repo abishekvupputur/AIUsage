@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -25,6 +26,7 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 	private bool m_IsLoading;
 	private bool m_IsDemoMode;
 	private UsageProvider m_Provider = UsageProvider.Claude;
+	private List<GeminiQuotaBucket> m_GeminiBuckets = [];
 
 
 	// ── Session (primary bar + tray icon) ──────────────────────────────────────
@@ -376,12 +378,33 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 			OnPropertyChanged( nameof( CatStateLabel ) );
 			OnPropertyChanged( nameof( CatStateName ) );
 			OnPropertyChanged( nameof( CopilotCreditsSummary ) );
+		OnPropertyChanged( nameof( ShowStandardBars ) );
+		OnPropertyChanged( nameof( ShowGeminiBuckets ) );
 		}
 	}
 
-	public string AppTitle        => m_Provider == UsageProvider.GitHubCopilot ? "GitHub Copilot Usage" : "Claude AI Usage";
+	public string AppTitle => m_Provider switch
+	{
+		UsageProvider.GitHubCopilot => "GitHub Copilot Usage",
+		UsageProvider.Gemini        => "Gemini Usage",
+		_                           => "Claude AI Usage",
+	};
+
 	public string SessionBarLabel => m_Provider == UsageProvider.GitHubCopilot ? "Monthly interactions" : "Current session";
-	public bool   ShowWeeklyBar   => true;
+	public bool   ShowWeeklyBar   => m_Provider != UsageProvider.Gemini;
+	public bool   ShowStandardBars  => m_Provider != UsageProvider.Gemini;
+	public bool   ShowGeminiBuckets => m_Provider == UsageProvider.Gemini && m_GeminiBuckets.Count > 0;
+
+	public List<GeminiQuotaBucket> GeminiBuckets
+	{
+		get => m_GeminiBuckets;
+		set
+		{
+			m_GeminiBuckets = value;
+			OnPropertyChanged();
+			OnPropertyChanged( nameof( ShowGeminiBuckets ) );
+		}
+	}
 
 	private (int ElapsedDays, int TotalDays) GetCopilotMonthProgressDays()
 	{
@@ -481,6 +504,30 @@ internal sealed class UsageViewModel : INotifyPropertyChanged
 
 
 	// ── Update from API data ────────────────────────────────────────────────────
+
+	public void UpdateFromGeminiData( List<GeminiQuotaBucket> buckets )
+	{
+		Provider = UsageProvider.Gemini;
+		GeminiBuckets = buckets;
+
+		// Drive tray icon with the most-consumed model (lowest remaining fraction)
+		var worst = buckets.Count > 0
+			? buckets.OrderBy( b => b.RemainingFraction ).First()
+			: null;
+		UsagePercent = worst?.UsedPercent ?? 0;
+
+		SessionUsed      = null;
+		SessionLimit     = null;
+		SessionResetsAt  = null;
+		WeeklyPercent    = 0;
+		WeeklyUsed       = null;
+		WeeklyLimit      = null;
+		WeeklyResetsAt   = null;
+		ExtraUsageEnabled = false;
+
+		LastUpdated  = DateTime.Now;
+		ErrorMessage = null;
+	}
 
 	public void UpdateFromData( CopilotUsageData data, UsageProvider provider = UsageProvider.Claude )
 	{

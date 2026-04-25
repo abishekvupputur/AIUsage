@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +20,7 @@ public partial class SettingsWindow : Window
 
 	private readonly ClaudeUsageService   m_ClaudeService   = new();
 	private readonly GitHubCopilotService m_CopilotService  = new();
+	private readonly GeminiUsageService   m_GeminiService   = new();
 	private CancellationTokenSource?      m_AuthCts;
 
 
@@ -43,13 +45,11 @@ public partial class SettingsWindow : Window
 
 		// Provider radio
 		if ( settings.Provider == UsageProvider.GitHubCopilot )
-		{
 			CopilotRadio.IsChecked = true;
-		}
+		else if ( settings.Provider == UsageProvider.Gemini )
+			GeminiRadio.IsChecked = true;
 		else
-		{
 			ClaudeRadio.IsChecked = true;
-		}
 
 		// Claude key
 		SessionKeyBox.Text = settings.SessionKey;
@@ -72,6 +72,13 @@ public partial class SettingsWindow : Window
 		if ( IntervalCombo.SelectedItem == null )
 			IntervalCombo.SelectedIndex = 1;
 
+		// Gemini credentials
+		GeminiClientIdBox.Text         = settings.GeminiClientId;
+		GeminiClientSecretBox.Password = settings.GeminiClientSecret;
+		GeminiCredPathBox.Text         = string.IsNullOrEmpty( settings.GeminiCredentialsPath )
+			? @"%USERPROFILE%\.gemini\oauth_creds.json"
+			: settings.GeminiCredentialsPath;
+
 		StartupCheckBox.IsChecked = settings.StartWithWindows;
 
 		UpdateProviderPanels();
@@ -82,9 +89,11 @@ public partial class SettingsWindow : Window
 
 	private void UpdateProviderPanels()
 	{
+		bool isGemini  = GeminiRadio.IsChecked  == true;
 		bool isCopilot = CopilotRadio.IsChecked == true;
-		ClaudePanel.Visibility  = isCopilot ? Visibility.Collapsed : Visibility.Visible;
-		CopilotPanel.Visibility = isCopilot ? Visibility.Visible   : Visibility.Collapsed;
+		ClaudePanel.Visibility  = ( !isCopilot && !isGemini ) ? Visibility.Visible : Visibility.Collapsed;
+		CopilotPanel.Visibility = isCopilot ? Visibility.Visible : Visibility.Collapsed;
+		GeminiPanel.Visibility  = isGemini  ? Visibility.Visible : Visibility.Collapsed;
 	}
 
 
@@ -225,17 +234,79 @@ public partial class SettingsWindow : Window
 	}
 
 
+	// ── Gemini ────────────────────────────────────────────────────────────────
+
+	private void GeminiBrowse_Click( object sender, RoutedEventArgs e )
+	{
+		var dlg = new Microsoft.Win32.OpenFileDialog
+		{
+			Title      = "Select Gemini Credentials File",
+			Filter     = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+			DefaultExt = ".json",
+		};
+
+		var expandedPath = Environment.ExpandEnvironmentVariables( GeminiCredPathBox.Text.Trim() );
+		var dir = System.IO.Path.GetDirectoryName( expandedPath );
+		if ( !string.IsNullOrEmpty( dir ) && System.IO.Directory.Exists( dir ) )
+			dlg.InitialDirectory = dir;
+
+		if ( dlg.ShowDialog( this ) == true )
+			GeminiCredPathBox.Text = dlg.FileName;
+	}
+
+	private async void GeminiTest_Click( object sender, RoutedEventArgs e )
+	{
+		var clientId     = GeminiClientIdBox.Text.Trim();
+		var clientSecret = GeminiClientSecretBox.Password;
+		var credPath     = GeminiCredPathBox.Text.Trim();
+
+		if ( string.IsNullOrWhiteSpace( clientId ) || string.IsNullOrWhiteSpace( clientSecret ) || string.IsNullOrWhiteSpace( credPath ) )
+		{
+			SetGeminiStatus( "Please fill in all fields first.", WpfBrushes.OrangeRed );
+			return;
+		}
+
+		GeminiTestButton.IsEnabled = false;
+		SetGeminiStatus( "Testing connection…", WpfBrushes.Gray );
+
+		try
+		{
+			var buckets = await m_GeminiService.GetQuotaAsync( clientId, clientSecret, credPath ).ConfigureAwait( true );
+			var summary = string.Join( ", ", buckets.Select( b => $"{b.ModelId}: {b.RemainingPercent:0.#}% remaining" ) );
+			SetGeminiStatus( $"✓ Connected! {summary}", WpfBrushes.Green );
+		}
+		catch ( Exception ex )
+		{
+			SetGeminiStatus( ex.Message, WpfBrushes.Red );
+		}
+		finally
+		{
+			GeminiTestButton.IsEnabled = true;
+		}
+	}
+
+	private void SetGeminiStatus( string message, WpfBrush color )
+	{
+		GeminiStatusText.Text       = message;
+		GeminiStatusText.Foreground = color;
+		GeminiStatusText.Visibility = Visibility.Visible;
+	}
+
+
 	// ── Save / Cancel ─────────────────────────────────────────────────────────
 
 	private void SaveButton_Click( object sender, RoutedEventArgs e )
 	{
 		var settings = SettingsService.Load();
 
-		settings.Provider = CopilotRadio.IsChecked == true
-			? UsageProvider.GitHubCopilot
-			: UsageProvider.Claude;
+		settings.Provider = CopilotRadio.IsChecked == true ? UsageProvider.GitHubCopilot :
+		                    GeminiRadio.IsChecked  == true ? UsageProvider.Gemini :
+		                    UsageProvider.Claude;
 
-		settings.SessionKey = SessionKeyBox.Text.Trim();
+		settings.SessionKey            = SessionKeyBox.Text.Trim();
+		settings.GeminiClientId        = GeminiClientIdBox.Text.Trim();
+		settings.GeminiClientSecret    = GeminiClientSecretBox.Password;
+		settings.GeminiCredentialsPath = GeminiCredPathBox.Text.Trim();
 
 		if ( IntervalCombo.SelectedItem is ComboBoxItem selected &&
 			selected.Tag is string tag &&

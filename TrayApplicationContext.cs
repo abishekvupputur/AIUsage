@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using ThreadingTimer = System.Threading.Timer;
 
 using CopilotUsage.Helpers;
@@ -11,6 +13,7 @@ internal sealed class TrayApplicationContext : IDisposable
 {
 	private readonly ClaudeUsageService    m_ClaudeService   = new();
 	private readonly GitHubCopilotService  m_CopilotService  = new();
+	private readonly GeminiUsageService    m_GeminiService   = new();
 	private readonly UsageViewModel m_ViewModel;
 	private readonly bool m_IsDemoMode;
 
@@ -55,10 +58,19 @@ internal sealed class TrayApplicationContext : IDisposable
 		contextMenu.Items.Add( "Raw API Response…", null, ( _, _ ) =>
 		{
 			var s = SettingsService.Load();
-			Func<Task<string>> getRaw = s.Provider == Models.UsageProvider.GitHubCopilot
-				? () => m_CopilotService.GetRawUsageJsonAsync( s.GitHubToken )
-				: () => m_ClaudeService.GetRawUsageJsonAsync( s.SessionKey );
-			System.Windows.Application.Current.Dispatcher.Invoke( () => new RawJsonWindow( getRaw ).Show() );
+			var providers = new Dictionary<string, Func<Task<string>>>
+			{
+				["Claude"]  = () => m_ClaudeService.GetRawUsageJsonAsync( s.SessionKey ),
+				["Copilot"] = () => m_CopilotService.GetRawUsageJsonAsync( s.GitHubToken ),
+				["Gemini"]  = () => m_GeminiService.GetRawJsonAsync( s.GeminiClientId, s.GeminiClientSecret, s.GeminiCredentialsPath ),
+			};
+			var initial = s.Provider switch
+			{
+				Models.UsageProvider.GitHubCopilot => "Copilot",
+				Models.UsageProvider.Gemini        => "Gemini",
+				_                                  => "Claude",
+			};
+			System.Windows.Application.Current.Dispatcher.Invoke( () => new RawJsonWindow( providers, initial ).Show() );
 		} );
 		contextMenu.Items.Add( "About", null, ( _, _ ) =>
 			System.Windows.Application.Current.Dispatcher.Invoke( () => new AboutWindow().ShowDialog() ) );
@@ -131,19 +143,26 @@ internal sealed class TrayApplicationContext : IDisposable
 
 		try
 		{
-			var data = settings.Provider == Models.UsageProvider.GitHubCopilot
-			? await m_CopilotService.GetUsageAsync( settings.GitHubToken ).ConfigureAwait( true )
-			: await m_ClaudeService.GetUsageAsync( settings.SessionKey ).ConfigureAwait( true );
-
-			m_ViewModel.UpdateFromData( data, settings.Provider );
-
-			if ( data.IsUnavailable )
+			if ( settings.Provider == Models.UsageProvider.Gemini )
 			{
-				UpdateTrayIconError();
+				var buckets = await m_GeminiService.GetQuotaAsync(
+					settings.GeminiClientId, settings.GeminiClientSecret, settings.GeminiCredentialsPath )
+					.ConfigureAwait( true );
+				m_ViewModel.UpdateFromGeminiData( buckets );
+				UpdateTrayIcon();
 			}
 			else
 			{
-				UpdateTrayIcon();
+				var data = settings.Provider == Models.UsageProvider.GitHubCopilot
+					? await m_CopilotService.GetUsageAsync( settings.GitHubToken ).ConfigureAwait( true )
+					: await m_ClaudeService.GetUsageAsync( settings.SessionKey ).ConfigureAwait( true );
+
+				m_ViewModel.UpdateFromData( data, settings.Provider );
+
+				if ( data.IsUnavailable )
+					UpdateTrayIconError();
+				else
+					UpdateTrayIcon();
 			}
 		}
 		catch ( Exception ex )
@@ -172,14 +191,29 @@ internal sealed class TrayApplicationContext : IDisposable
 
 		var provider = SettingsService.Load().Provider;
 		var prefix = m_IsDemoMode ? "[DEMO] " : string.Empty;
-		var label  = provider == Models.UsageProvider.GitHubCopilot ? "Copilot" : "Claude";
-		m_NotifyIcon.Text = provider == Models.UsageProvider.GitHubCopilot
-			&& m_ViewModel.SessionUsed.HasValue
-			&& m_ViewModel.SessionLimit.HasValue
-			? string.IsNullOrEmpty( m_ViewModel.CopilotCreditsSummary )
-				? $"{prefix}{label}: {m_ViewModel.SessionUsed}/{m_ViewModel.SessionLimit} ({percent:0}%)"
-				: $"{prefix}{label}: {m_ViewModel.SessionUsed}/{m_ViewModel.SessionLimit}, {m_ViewModel.CopilotCreditsSummary}"
-			: $"{prefix}{label}: {percent:0}% used";
+
+		string trayText;
+		if ( provider == Models.UsageProvider.Gemini )
+		{
+			var buckets = m_ViewModel.GeminiBuckets;
+			trayText = buckets.Count > 0
+				? $"{prefix}Gemini: " + string.Join( ", ", buckets.Select( b => $"{ShortGeminiModelName( b.ModelId )} {b.RemainingPercent:0.#}%↑" ) )
+				: $"{prefix}Gemini: {percent:0}% max used";
+			if ( trayText.Length > 127 ) trayText = trayText[..127];
+		}
+		else
+		{
+			var label = provider == Models.UsageProvider.GitHubCopilot ? "Copilot" : "Claude";
+			trayText = provider == Models.UsageProvider.GitHubCopilot
+				&& m_ViewModel.SessionUsed.HasValue
+				&& m_ViewModel.SessionLimit.HasValue
+				? string.IsNullOrEmpty( m_ViewModel.CopilotCreditsSummary )
+					? $"{prefix}{label}: {m_ViewModel.SessionUsed}/{m_ViewModel.SessionLimit} ({percent:0}%)"
+					: $"{prefix}{label}: {m_ViewModel.SessionUsed}/{m_ViewModel.SessionLimit}, {m_ViewModel.CopilotCreditsSummary}"
+				: $"{prefix}{label}: {percent:0}% used";
+		}
+
+		m_NotifyIcon.Text = trayText;
 		oldIcon?.Dispose();
 	}
 
@@ -194,7 +228,12 @@ internal sealed class TrayApplicationContext : IDisposable
 		var oldIcon = m_NotifyIcon.Icon;
 		m_NotifyIcon.Icon = TrayIconHelper.CreateUsageIcon( null );
 		var prefix = m_IsDemoMode ? "[DEMO] " : string.Empty;
-		var label  = SettingsService.Load().Provider == Models.UsageProvider.GitHubCopilot ? "Copilot" : "Claude";
+		var label  = SettingsService.Load().Provider switch
+		{
+			Models.UsageProvider.GitHubCopilot => "Copilot",
+			Models.UsageProvider.Gemini        => "Gemini",
+			_                                  => "Claude",
+		};
 		m_NotifyIcon.Text = $"{prefix}{label} — error fetching data";
 		oldIcon?.Dispose();
 	}
@@ -260,6 +299,14 @@ internal sealed class TrayApplicationContext : IDisposable
 
 		UpdateTrayIcon();
 	}
+
+	private static string ShortGeminiModelName( string modelId ) => modelId switch
+	{
+		"gemini-2.5-pro"        => "Pro",
+		"gemini-2.5-flash"      => "Flash",
+		"gemini-2.5-flash-lite" => "Lite",
+		_                       => modelId,
+	};
 
 	private static DateTimeOffset GetNextSunday()
 	{

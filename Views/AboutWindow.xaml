@@ -51,7 +51,7 @@
         <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center"
                    Foreground="#888888" FontSize="12" Margin="0,0,0,14"
                    TextAlignment="Center">
-            Shows usage for Claude and GitHub Copilot
+            Shows quota usage for Claude, GitHub Copilot, and Gemini
             in the system tray, refreshed automatically.
         </TextBlock>
 
