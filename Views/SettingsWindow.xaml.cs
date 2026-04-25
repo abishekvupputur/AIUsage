@@ -18,10 +18,10 @@ public partial class SettingsWindow : Window
 
 	private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
-	private readonly ClaudeUsageService   m_ClaudeService   = new();
-	private readonly GitHubCopilotService m_CopilotService  = new();
-	private readonly GeminiUsageService   m_GeminiService   = new();
-	private readonly OpenAIUsageService   m_OpenAIService   = new();
+	private readonly ClaudeUsageService   m_ClaudeService  = new();
+	private readonly GitHubCopilotService m_CopilotService = new();
+	private readonly GeminiUsageService   m_GeminiService  = new();
+	private readonly OpenAIUsageService   m_OpenAIService  = new();
 	private CancellationTokenSource?      m_AuthCts;
 
 
@@ -44,12 +44,6 @@ public partial class SettingsWindow : Window
 	{
 		var settings = SettingsService.Load();
 
-		// Provider checkboxes
-		ClaudeCheck.IsChecked  = settings.SelectedProviders.Contains( UsageProvider.Claude );
-		CopilotCheck.IsChecked = settings.SelectedProviders.Contains( UsageProvider.GitHubCopilot );
-		OpenAICheck.IsChecked  = settings.SelectedProviders.Contains( UsageProvider.OpenAI );
-		GeminiCheck.IsChecked  = settings.SelectedProviders.Contains( UsageProvider.Gemini );
-
 		// Claude key
 		SessionKeyBox.Text = settings.SessionKey;
 		if ( !string.IsNullOrWhiteSpace( settings.SessionKey ) )
@@ -63,6 +57,13 @@ public partial class SettingsWindow : Window
 		if ( !string.IsNullOrWhiteSpace( settings.OpenAIToken ) )
 			ShowOpenAIConnected();
 
+		// Gemini credentials
+		GeminiClientIdBox.Text         = settings.GeminiClientId;
+		GeminiClientSecretBox.Password = settings.GeminiClientSecret;
+		GeminiCredPathBox.Text         = string.IsNullOrEmpty( settings.GeminiCredentialsPath )
+			? @"%USERPROFILE%\.gemini\oauth_creds.json"
+			: settings.GeminiCredentialsPath;
+
 		// Refresh interval
 		foreach ( ComboBoxItem item in IntervalCombo.Items )
 		{
@@ -75,27 +76,22 @@ public partial class SettingsWindow : Window
 		if ( IntervalCombo.SelectedItem == null )
 			IntervalCombo.SelectedIndex = 1;
 
-		// Gemini credentials
-		GeminiClientIdBox.Text         = settings.GeminiClientId;
-		GeminiClientSecretBox.Password = settings.GeminiClientSecret;
-		GeminiCredPathBox.Text         = string.IsNullOrEmpty( settings.GeminiCredentialsPath )
-			? @"%USERPROFILE%\.gemini\oauth_creds.json"
-			: settings.GeminiCredentialsPath;
-
 		StartupCheckBox.IsChecked = settings.StartWithWindows;
 
-		UpdateProviderPanels();
+		UpdateTabHeaders();
 	}
 
 
-	private void Provider_Changed( object sender, RoutedEventArgs e ) => UpdateProviderPanels();
+	// ── Tab header badges ─────────────────────────────────────────────────────
 
-	private void UpdateProviderPanels()
+	private void UpdateTabHeaders()
 	{
-		ClaudePanel.Visibility  = ClaudeCheck.IsChecked  == true ? Visibility.Visible : Visibility.Collapsed;
-		CopilotPanel.Visibility = CopilotCheck.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-		OpenAIPanel.Visibility  = OpenAICheck.IsChecked  == true ? Visibility.Visible : Visibility.Collapsed;
-		GeminiPanel.Visibility  = GeminiCheck.IsChecked  == true ? Visibility.Visible : Visibility.Collapsed;
+		var settings = SettingsService.Load();
+		ClaudeTab.Header  = !string.IsNullOrWhiteSpace( settings.SessionKey )  ? "Claude AI ✓"      : "Claude AI";
+		CopilotTab.Header = !string.IsNullOrWhiteSpace( settings.GitHubToken ) ? "GitHub Copilot ✓" : "GitHub Copilot";
+		OpenAITab.Header  = !string.IsNullOrWhiteSpace( settings.OpenAIToken ) ? "OpenAI Codex ✓"   : "OpenAI Codex";
+		GeminiTab.Header  = !string.IsNullOrWhiteSpace( settings.GeminiClientId )
+		                    && !string.IsNullOrWhiteSpace( settings.GeminiClientSecret ) ? "Gemini ✓" : "Gemini";
 	}
 
 
@@ -167,19 +163,17 @@ public partial class SettingsWindow : Window
 		{
 			var info = await GitHubAuthService.RequestDeviceCodeAsync().ConfigureAwait( true );
 
-			CopilotVerificationUrl.Text   = info.VerificationUri;
-			CopilotUserCode.Text          = info.UserCode;
-			CopilotDeviceCodePanel.Visibility = Visibility.Visible;
+			CopilotVerificationUrl.Text          = info.VerificationUri;
+			CopilotUserCode.Text                 = info.UserCode;
+			CopilotDeviceCodePanel.Visibility    = Visibility.Visible;
 			SetCopilotStatus( "Waiting for you to authorise in the browser…", WpfBrushes.Gray );
 
-			// Open browser
 			Process.Start( new ProcessStartInfo( info.VerificationUri ) { UseShellExecute = true } );
 
 			m_AuthCts = new CancellationTokenSource();
 			var token = await GitHubAuthService.PollForTokenAsync( info.DeviceCode, info.Interval, m_AuthCts.Token )
 				.ConfigureAwait( true );
 
-			// Save token immediately
 			var settings = SettingsService.Load();
 			settings.GitHubToken = token;
 			SettingsService.Save( settings );
@@ -187,6 +181,7 @@ public partial class SettingsWindow : Window
 			CopilotDeviceCodePanel.Visibility = Visibility.Collapsed;
 			ShowCopilotConnected();
 			SetCopilotStatus( "✓ GitHub account connected!", WpfBrushes.Green );
+			UpdateTabHeaders();
 		}
 		catch ( OperationCanceledException )
 		{
@@ -216,16 +211,17 @@ public partial class SettingsWindow : Window
 		settings.GitHubToken = string.Empty;
 		SettingsService.Save( settings );
 
-		CopilotConnectedPanel.Visibility  = Visibility.Collapsed;
-		CopilotAuthFlowPanel.Visibility   = Visibility.Visible;
+		CopilotConnectedPanel.Visibility = Visibility.Collapsed;
+		CopilotAuthFlowPanel.Visibility  = Visibility.Visible;
 		SetCopilotStatus( "Disconnected.", WpfBrushes.Gray );
+		UpdateTabHeaders();
 	}
 
 	private void ShowCopilotConnected()
 	{
-		CopilotConnectedText.Text         = "✓ GitHub account connected";
-		CopilotConnectedPanel.Visibility  = Visibility.Visible;
-		CopilotAuthFlowPanel.Visibility   = Visibility.Collapsed;
+		CopilotConnectedText.Text        = "✓ GitHub account connected";
+		CopilotConnectedPanel.Visibility = Visibility.Visible;
+		CopilotAuthFlowPanel.Visibility  = Visibility.Collapsed;
 	}
 
 	private void SetCopilotStatus( string message, WpfBrush color )
@@ -247,27 +243,26 @@ public partial class SettingsWindow : Window
 		{
 			var info = await OpenAIAuthService.RequestDeviceCodeAsync().ConfigureAwait( true );
 
-			OpenAIVerificationUrl.Text   = info.VerificationUri;
-			OpenAIUserCode.Text          = info.UserCode;
-			OpenAIDeviceCodePanel.Visibility = Visibility.Visible;
+			OpenAIVerificationUrl.Text        = info.VerificationUri;
+			OpenAIUserCode.Text               = info.UserCode;
+			OpenAIDeviceCodePanel.Visibility  = Visibility.Visible;
 			SetOpenAIStatus( "Waiting for you to authorise in the browser…", WpfBrushes.Gray );
 
-			// Open browser
 			Process.Start( new ProcessStartInfo( info.VerificationUri ) { UseShellExecute = true } );
 
 			m_AuthCts = new CancellationTokenSource();
 			var tokens = await OpenAIAuthService.PollForTokenAsync( info.DeviceCode, info.UserCode, info.Interval, m_AuthCts.Token )
 				.ConfigureAwait( true );
 
-			// Save tokens immediately
 			var settings = SettingsService.Load();
-			settings.OpenAIToken = tokens.AccessToken;
+			settings.OpenAIToken        = tokens.AccessToken;
 			settings.OpenAIRefreshToken = tokens.RefreshToken;
 			SettingsService.Save( settings );
 
 			OpenAIDeviceCodePanel.Visibility = Visibility.Collapsed;
 			ShowOpenAIConnected();
 			SetOpenAIStatus( "✓ OpenAI account connected!", WpfBrushes.Green );
+			UpdateTabHeaders();
 		}
 		catch ( OperationCanceledException )
 		{
@@ -294,20 +289,21 @@ public partial class SettingsWindow : Window
 	private void OpenAIDisconnect_Click( object sender, RoutedEventArgs e )
 	{
 		var settings = SettingsService.Load();
-		settings.OpenAIToken = string.Empty;
+		settings.OpenAIToken        = string.Empty;
 		settings.OpenAIRefreshToken = string.Empty;
 		SettingsService.Save( settings );
 
-		OpenAIConnectedPanel.Visibility  = Visibility.Collapsed;
-		OpenAIAuthFlowPanel.Visibility   = Visibility.Visible;
+		OpenAIConnectedPanel.Visibility = Visibility.Collapsed;
+		OpenAIAuthFlowPanel.Visibility  = Visibility.Visible;
 		SetOpenAIStatus( "Disconnected.", WpfBrushes.Gray );
+		UpdateTabHeaders();
 	}
 
 	private void ShowOpenAIConnected()
 	{
-		OpenAIConnectedText.Text         = "✓ OpenAI account connected";
-		OpenAIConnectedPanel.Visibility  = Visibility.Visible;
-		OpenAIAuthFlowPanel.Visibility   = Visibility.Collapsed;
+		OpenAIConnectedText.Text        = "✓ OpenAI account connected";
+		OpenAIConnectedPanel.Visibility = Visibility.Visible;
+		OpenAIAuthFlowPanel.Visibility  = Visibility.Collapsed;
 	}
 
 	private void SetOpenAIStatus( string message, WpfBrush color )
@@ -383,22 +379,31 @@ public partial class SettingsWindow : Window
 	{
 		var settings = SettingsService.Load();
 
-		settings.SelectedProviders.Clear();
-		if ( ClaudeCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Claude );
-		if ( CopilotCheck.IsChecked == true ) settings.SelectedProviders.Add( UsageProvider.GitHubCopilot );
-		if ( OpenAICheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.OpenAI );
-		if ( GeminiCheck.IsChecked  == true ) settings.SelectedProviders.Add( UsageProvider.Gemini );
-
-		if ( settings.SelectedProviders.Count == 0 )
-		{
-			System.Windows.MessageBox.Show( "Please select at least one provider.", "No Provider Selected", MessageBoxButton.OK, MessageBoxImage.Warning );
-			return;
-		}
-
 		settings.SessionKey            = SessionKeyBox.Text.Trim();
 		settings.GeminiClientId        = GeminiClientIdBox.Text.Trim();
 		settings.GeminiClientSecret    = GeminiClientSecretBox.Password;
 		settings.GeminiCredentialsPath = GeminiCredPathBox.Text.Trim();
+
+		// SelectedProviders auto-computed from what is actually connected
+		settings.SelectedProviders.Clear();
+		if ( !string.IsNullOrWhiteSpace( settings.SessionKey ) )
+			settings.SelectedProviders.Add( UsageProvider.Claude );
+		if ( !string.IsNullOrWhiteSpace( settings.GitHubToken ) )
+			settings.SelectedProviders.Add( UsageProvider.GitHubCopilot );
+		if ( !string.IsNullOrWhiteSpace( settings.OpenAIToken ) )
+			settings.SelectedProviders.Add( UsageProvider.OpenAI );
+		if ( !string.IsNullOrWhiteSpace( settings.GeminiClientId ) && !string.IsNullOrWhiteSpace( settings.GeminiClientSecret ) )
+			settings.SelectedProviders.Add( UsageProvider.Gemini );
+
+		if ( settings.SelectedProviders.Count == 0 )
+		{
+			System.Windows.MessageBox.Show(
+				"Please configure at least one provider before saving.",
+				"No Provider Configured",
+				MessageBoxButton.OK,
+				MessageBoxImage.Warning );
+			return;
+		}
 
 		if ( IntervalCombo.SelectedItem is ComboBoxItem selected &&
 			selected.Tag is string tag &&

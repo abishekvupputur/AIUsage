@@ -107,7 +107,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Dark CheckBox with custom template -->
+        <!-- Dark CheckBox -->
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="#EBEBEB"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -195,6 +195,71 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Provider tab control -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#333333" BorderThickness="0,0,0,1">
+                                <TabPanel IsItemsHost="True" Background="Transparent" Margin="4,6,4,0"/>
+                            </Border>
+                            <Border Grid.Row="1" Background="#222222" BorderBrush="#333333" BorderThickness="1,0,1,1">
+                                <ContentPresenter ContentSource="SelectedContent"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Provider tab item -->
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Tab" Background="{TemplateBinding Background}"
+                                CornerRadius="4,4,0,0" Padding="{TemplateBinding Padding}"
+                                Margin="{TemplateBinding Margin}">
+                            <TextBlock x:Name="Lbl" Text="{TemplateBinding Header}"
+                                       FontFamily="{TemplateBinding FontFamily}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Tab" Property="Background" Value="#D4845A"/>
+                                <Setter TargetName="Lbl" Property="Foreground" Value="#1A1A1A"/>
+                                <Setter TargetName="Lbl" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="False"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Tab" Property="Background" Value="#2E2E2E"/>
+                                <Setter TargetName="Lbl" Property="Foreground" Value="#EBEBEB"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="20" TextElement.FontFamily="Segoe UI">
@@ -205,387 +270,349 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Provider selector -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="Providers" FontWeight="SemiBold" FontSize="13"
-                       Foreground="#EBEBEB" Margin="0,0,0,8"/>
-            <StackPanel Orientation="Horizontal">
-                <CheckBox x:Name="ClaudeCheck" Content="Claude AI"
-                             Foreground="#EBEBEB" Margin="0,0,16,0"
-                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
-                <CheckBox x:Name="CopilotCheck" Content="GitHub Copilot"
-                             Foreground="#EBEBEB" Margin="0,0,16,0"
-                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
-                <CheckBox x:Name="OpenAICheck" Content="OpenAI Codex"
-                             Foreground="#EBEBEB" Margin="0,0,16,0"
-                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
-                <CheckBox x:Name="GeminiCheck" Content="Gemini"
-                             Foreground="#EBEBEB"
-                             Checked="Provider_Changed" Unchecked="Provider_Changed"/>
-            </StackPanel>
-        </StackPanel>
+        <!-- ── Provider tabs ── -->
+        <TabControl Grid.Row="0" Margin="0,0,0,14" MinHeight="340">
 
-        <!-- ── Claude auth panel ── -->
-        <Border x:Name="ClaudePanel" Grid.Row="1"
-                Background="#222222" BorderBrush="#333333" BorderThickness="1"
-                CornerRadius="6" Padding="14,12" Margin="0,0,0,14">
-            <StackPanel>
-                <TextBlock Text="Claude Session Key" FontWeight="SemiBold"
-                           FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
+            <!-- Claude AI -->
+            <TabItem x:Name="ClaudeTab" Header="Claude AI">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="14,12">
+                        <TextBlock Text="Claude Session Key" FontWeight="SemiBold"
+                                   FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
-                <TextBlock Text="How to get your session key:" FontWeight="SemiBold"
-                           FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
+                        <TextBlock Text="How to get your session key:" FontWeight="SemiBold"
+                                   FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
 
-                <StackPanel Margin="0,0,0,10">
-                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
-                        <Run Text="1.  Open "/>
-                        <Run Text="claude.ai" FontWeight="SemiBold" Foreground="#D4845A"/>
-                        <Run Text=" in your browser and sign in"/>
-                    </TextBlock>
-                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
-                        <Run Text="2.  Press "/>
-                        <Run Text="F12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                        <Run Text="  →  Application  →  Cookies  →  https://claude.ai"/>
-                    </TextBlock>
-                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
-                        <Run Text="3.  Find the row named "/>
-                        <Run Text="sessionKey" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                        <Run Text=" and double-click its Value cell"/>
-                    </TextBlock>
-                    <TextBlock FontSize="12" Foreground="#888888">
-                        <Run Text="4.  Press "/>
-                        <Run Text="Ctrl+A" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                        <Run Text=" to select all, then "/>
-                        <Run Text="Ctrl+C" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
-                        <Run Text=" to copy — the value is very long"/>
-                    </TextBlock>
-                </StackPanel>
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
+                                <Run Text="1.  Open "/>
+                                <Run Text="claude.ai" FontWeight="SemiBold" Foreground="#D4845A"/>
+                                <Run Text=" in your browser and sign in"/>
+                            </TextBlock>
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
+                                <Run Text="2.  Press "/>
+                                <Run Text="F12" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                <Run Text="  →  Application  →  Cookies  →  https://claude.ai"/>
+                            </TextBlock>
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3">
+                                <Run Text="3.  Find the row named "/>
+                                <Run Text="sessionKey" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                <Run Text=" and double-click its Value cell"/>
+                            </TextBlock>
+                            <TextBlock FontSize="12" Foreground="#888888">
+                                <Run Text="4.  Press "/>
+                                <Run Text="Ctrl+A" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                <Run Text=" to select all, then "/>
+                                <Run Text="Ctrl+C" FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB"/>
+                                <Run Text=" to copy — the value is very long"/>
+                            </TextBlock>
+                        </StackPanel>
 
-                <DockPanel Margin="0,0,0,5">
-                    <TextBlock Text="Session Key:" FontSize="12" FontWeight="SemiBold"
-                               Foreground="#EBEBEB" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="KeyLengthHint" DockPanel.Dock="Right"
-                               FontSize="11" Foreground="#555555" VerticalAlignment="Center"
-                               HorizontalAlignment="Right"/>
-                </DockPanel>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="SessionKeyBox"
-                             Grid.Column="0"
-                             FontFamily="Cascadia Code, Consolas" FontSize="11"
-                             Padding="7,6" Margin="0,0,8,0"
-                             TextWrapping="NoWrap"
-                             VerticalContentAlignment="Center"
-                             MaxLength="4000"
-                             TextChanged="SessionKeyBox_TextChanged"/>
-                    <Button x:Name="TestButton"
-                            Grid.Column="1"
-                            Content="Test"
-                            Width="70" Padding="0,6"
-                            Click="TestButton_Click"/>
-                </Grid>
+                        <DockPanel Margin="0,0,0,5">
+                            <TextBlock Text="Session Key:" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="#EBEBEB" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="KeyLengthHint" DockPanel.Dock="Right"
+                                       FontSize="11" Foreground="#555555" VerticalAlignment="Center"
+                                       HorizontalAlignment="Right"/>
+                        </DockPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="SessionKeyBox"
+                                     Grid.Column="0"
+                                     FontFamily="Cascadia Code, Consolas" FontSize="11"
+                                     Padding="7,6" Margin="0,0,8,0"
+                                     TextWrapping="NoWrap"
+                                     VerticalContentAlignment="Center"
+                                     MaxLength="4000"
+                                     TextChanged="SessionKeyBox_TextChanged"/>
+                            <Button x:Name="TestButton"
+                                    Grid.Column="1"
+                                    Content="Test"
+                                    Width="70" Padding="0,6"
+                                    Click="TestButton_Click"/>
+                        </Grid>
 
-                <TextBlock x:Name="AuthStatusText"
-                           Text="" TextWrapping="Wrap"
-                           FontSize="12" Margin="0,8,0,0"
-                           Foreground="#888888"
-                           Visibility="Collapsed"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ── GitHub Copilot auth panel ── -->
-        <Border x:Name="CopilotPanel" Grid.Row="1"
-                Background="#222222" BorderBrush="#333333" BorderThickness="1"
-                CornerRadius="6" Padding="14,12" Margin="0,0,0,14"
-                Visibility="Collapsed">
-            <StackPanel>
-                <TextBlock Text="GitHub Copilot Auth" FontWeight="SemiBold"
-                           FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
-
-                <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,12" TextWrapping="Wrap">
-                    Sign in with GitHub to grant access to your Copilot usage data.
-                    Click Connect and follow the instructions in your browser.
-                </TextBlock>
-
-                <!-- Connected state -->
-                <StackPanel x:Name="CopilotConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
-                    <TextBlock x:Name="CopilotConnectedText" FontSize="12" Foreground="#3FB950"
-                               Margin="0,0,0,8"/>
-                    <Button x:Name="CopilotDisconnectButton" Content="Disconnect"
-                            Width="110" HorizontalAlignment="Left" Padding="0,6"
-                            Style="{StaticResource GhostButtonStyle}"
-                            Click="CopilotDisconnect_Click"/>
-                </StackPanel>
-
-                <!-- Device code flow -->
-                <StackPanel x:Name="CopilotAuthFlowPanel">
-                    <!-- Step 1: Connect button -->
-                    <Button x:Name="CopilotConnectButton" Content="Connect GitHub Account"
-                            Width="180" HorizontalAlignment="Left" Padding="0,6"
-                            Click="CopilotConnect_Click"/>
-
-                    <!-- Step 2: Device code display (shown while waiting) -->
-                    <StackPanel x:Name="CopilotDeviceCodePanel" Visibility="Collapsed" Margin="0,10,0,0">
-                        <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
-                            Open the URL below and enter the code to authorise:
-                        </TextBlock>
-                        <TextBlock x:Name="CopilotVerificationUrl" FontSize="12" Foreground="#D4845A"
-                                   Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
-                        <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
-                        <TextBlock x:Name="CopilotUserCode" FontSize="20" FontWeight="Bold"
-                                   Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
-                                   Margin="0,0,0,8"/>
-                        <Button x:Name="CopilotCancelButton" Content="Cancel"
-                                Width="80" HorizontalAlignment="Left" Padding="0,6"
-                                Style="{StaticResource GhostButtonStyle}"
-                                Click="CopilotCancel_Click"/>
+                        <TextBlock x:Name="AuthStatusText"
+                                   Text="" TextWrapping="Wrap"
+                                   FontSize="12" Margin="0,8,0,0"
+                                   Foreground="#888888"
+                                   Visibility="Collapsed"/>
                     </StackPanel>
-                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock x:Name="CopilotStatusText"
-                           Text="" TextWrapping="Wrap"
-                           FontSize="12" Margin="0,8,0,0"
-                           Foreground="#888888"
-                           Visibility="Collapsed"/>
-            </StackPanel>
-        </Border>
+            <!-- GitHub Copilot -->
+            <TabItem x:Name="CopilotTab" Header="GitHub Copilot">
+                <StackPanel Margin="14,12">
+                    <TextBlock Text="GitHub Copilot Auth" FontWeight="SemiBold"
+                               FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
-        <!-- ── OpenAI auth panel ── -->
-        <Border x:Name="OpenAIPanel" Grid.Row="1"
-                Background="#222222" BorderBrush="#333333" BorderThickness="1"
-                CornerRadius="6" Padding="14,12" Margin="0,0,0,14"
-                Visibility="Collapsed">
-            <StackPanel>
-                <TextBlock Text="OpenAI Codex Auth" FontWeight="SemiBold"
-                           FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
+                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,12" TextWrapping="Wrap">
+                        Sign in with GitHub to grant access to your Copilot usage data.
+                        Click Connect and follow the instructions in your browser.
+                    </TextBlock>
 
-                <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,12" TextWrapping="Wrap">
-                    Sign in with your OpenAI/ChatGPT account to access your Codex subscription limits.
-                    Note: This is separate from OpenAI Platform (API) credits.
-                </TextBlock>
-
-                <!-- Connected state -->
-                <StackPanel x:Name="OpenAIConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
-                    <TextBlock x:Name="OpenAIConnectedText" FontSize="12" Foreground="#3FB950"
-                               Margin="0,0,0,8"/>
-                    <Button x:Name="OpenAIDisconnectButton" Content="Disconnect"
-                            Width="110" HorizontalAlignment="Left" Padding="0,6"
-                            Style="{StaticResource GhostButtonStyle}"
-                            Click="OpenAIDisconnect_Click"/>
-                </StackPanel>
-
-                <!-- Device code flow -->
-                <StackPanel x:Name="OpenAIAuthFlowPanel">
-                    <!-- Step 1: Connect button -->
-                    <Button x:Name="OpenAIConnectButton" Content="Connect OpenAI Account"
-                            Width="180" HorizontalAlignment="Left" Padding="0,6"
-                            Click="OpenAIConnect_Click"/>
-
-                    <!-- Step 2: Device code display (shown while waiting) -->
-                    <StackPanel x:Name="OpenAIDeviceCodePanel" Visibility="Collapsed" Margin="0,10,0,0">
-                        <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
-                            Open the URL below and enter the code to authorise:
-                        </TextBlock>
-                        <TextBlock x:Name="OpenAIVerificationUrl" FontSize="12" Foreground="#D4845A"
-                                   Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
-                        <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
-                        <TextBlock x:Name="OpenAIUserCode" FontSize="20" FontWeight="Bold"
-                                   Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
+                    <!-- Connected state -->
+                    <StackPanel x:Name="CopilotConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
+                        <TextBlock x:Name="CopilotConnectedText" FontSize="12" Foreground="#3FB950"
                                    Margin="0,0,0,8"/>
-                        <Button x:Name="OpenAICancelButton" Content="Cancel"
-                                Width="80" HorizontalAlignment="Left" Padding="0,6"
+                        <Button x:Name="CopilotDisconnectButton" Content="Disconnect"
+                                Width="110" HorizontalAlignment="Left" Padding="0,6"
                                 Style="{StaticResource GhostButtonStyle}"
-                                Click="OpenAICancel_Click"/>
+                                Click="CopilotDisconnect_Click"/>
                     </StackPanel>
+
+                    <!-- Device code flow -->
+                    <StackPanel x:Name="CopilotAuthFlowPanel">
+                        <Button x:Name="CopilotConnectButton" Content="Connect GitHub Account"
+                                Width="180" HorizontalAlignment="Left" Padding="0,6"
+                                Click="CopilotConnect_Click"/>
+
+                        <StackPanel x:Name="CopilotDeviceCodePanel" Visibility="Collapsed" Margin="0,10,0,0">
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
+                                Open the URL below and enter the code to authorise:
+                            </TextBlock>
+                            <TextBlock x:Name="CopilotVerificationUrl" FontSize="12" Foreground="#D4845A"
+                                       Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
+                            <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
+                            <TextBlock x:Name="CopilotUserCode" FontSize="20" FontWeight="Bold"
+                                       Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
+                                       Margin="0,0,0,8"/>
+                            <Button x:Name="CopilotCancelButton" Content="Cancel"
+                                    Width="80" HorizontalAlignment="Left" Padding="0,6"
+                                    Style="{StaticResource GhostButtonStyle}"
+                                    Click="CopilotCancel_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock x:Name="CopilotStatusText"
+                               Text="" TextWrapping="Wrap"
+                               FontSize="12" Margin="0,8,0,0"
+                               Foreground="#888888"
+                               Visibility="Collapsed"/>
                 </StackPanel>
+            </TabItem>
 
-                <TextBlock x:Name="OpenAIStatusText"
-                           Text="" TextWrapping="Wrap"
-                           FontSize="12" Margin="0,8,0,0"
-                           Foreground="#888888"
-                           Visibility="Collapsed"/>
-            </StackPanel>
-        </Border>
+            <!-- OpenAI Codex -->
+            <TabItem x:Name="OpenAITab" Header="OpenAI Codex">
+                <StackPanel Margin="14,12">
+                    <TextBlock Text="OpenAI Codex Auth" FontWeight="SemiBold"
+                               FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
 
-        <!-- ── Gemini auth panel ── -->
-        <Border x:Name="GeminiPanel" Grid.Row="1"
-                Background="#222222" BorderBrush="#333333" BorderThickness="1"
-                CornerRadius="6" Padding="14,12" Margin="0,0,0,14"
-                Visibility="Collapsed">
-            <StackPanel>
-                <TextBlock Text="Gemini Auth" FontWeight="SemiBold"
-                           FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
+                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,12" TextWrapping="Wrap">
+                        Sign in with your OpenAI/ChatGPT account to access your Codex subscription limits.
+                        Note: This is separate from OpenAI Platform (API) credits.
+                    </TextBlock>
 
-                <!-- ── Setup guide (scrollable) ── -->
-                <TextBlock Text="How to set up:" FontWeight="SemiBold"
-                           FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
+                    <!-- Connected state -->
+                    <StackPanel x:Name="OpenAIConnectedPanel" Visibility="Collapsed" Margin="0,0,0,8">
+                        <TextBlock x:Name="OpenAIConnectedText" FontSize="12" Foreground="#3FB950"
+                                   Margin="0,0,0,8"/>
+                        <Button x:Name="OpenAIDisconnectButton" Content="Disconnect"
+                                Width="110" HorizontalAlignment="Left" Padding="0,6"
+                                Style="{StaticResource GhostButtonStyle}"
+                                Click="OpenAIDisconnect_Click"/>
+                    </StackPanel>
 
-                <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10"
-                              Padding="0,0,6,0">
-                    <ScrollViewer.Resources>
-                        <Style TargetType="ScrollBar">
-                            <Setter Property="Width" Value="5"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ScrollBar">
-                                        <Grid Background="Transparent">
-                                            <Track x:Name="PART_Track" IsDirectionReversed="True">
-                                                <Track.DecreaseRepeatButton>
-                                                    <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Height="0"/>
-                                                </Track.DecreaseRepeatButton>
-                                                <Track.Thumb>
-                                                    <Thumb>
-                                                        <Thumb.Template>
-                                                            <ControlTemplate TargetType="Thumb">
-                                                                <Border x:Name="Bg" Background="#3A3A3A" CornerRadius="3"/>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter TargetName="Bg" Property="Background" Value="#555555"/>
-                                                                    </Trigger>
-                                                                    <Trigger Property="IsDragging" Value="True">
-                                                                        <Setter TargetName="Bg" Property="Background" Value="#D4845A"/>
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </Thumb.Template>
-                                                    </Thumb>
-                                                </Track.Thumb>
-                                                <Track.IncreaseRepeatButton>
-                                                    <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Height="0"/>
-                                                </Track.IncreaseRepeatButton>
-                                            </Track>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ScrollViewer.Resources>
-                    <StackPanel>
-                        <!-- Step 1 -->
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 1 — Find Client ID and Secret</TextBlock>
-                        <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
-                            On any PC with <Run FontWeight="SemiBold" Foreground="#EBEBEB">gemini-cli</Run> installed via npm, run in PowerShell:
-                        </TextBlock>
-                        <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
-                            <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
-                                       xml:space="preserve">$npmGlobal = npm root -g
+                    <!-- Device code flow -->
+                    <StackPanel x:Name="OpenAIAuthFlowPanel">
+                        <Button x:Name="OpenAIConnectButton" Content="Connect OpenAI Account"
+                                Width="180" HorizontalAlignment="Left" Padding="0,6"
+                                Click="OpenAIConnect_Click"/>
+
+                        <StackPanel x:Name="OpenAIDeviceCodePanel" Visibility="Collapsed" Margin="0,10,0,0">
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,6" TextWrapping="Wrap">
+                                Open the URL below and enter the code to authorise:
+                            </TextBlock>
+                            <TextBlock x:Name="OpenAIVerificationUrl" FontSize="12" Foreground="#D4845A"
+                                       Margin="0,0,0,6" FontFamily="Cascadia Code, Consolas"/>
+                            <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,4">Your code:</TextBlock>
+                            <TextBlock x:Name="OpenAIUserCode" FontSize="20" FontWeight="Bold"
+                                       Foreground="#EBEBEB" FontFamily="Cascadia Code, Consolas"
+                                       Margin="0,0,0,8"/>
+                            <Button x:Name="OpenAICancelButton" Content="Cancel"
+                                    Width="80" HorizontalAlignment="Left" Padding="0,6"
+                                    Style="{StaticResource GhostButtonStyle}"
+                                    Click="OpenAICancel_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock x:Name="OpenAIStatusText"
+                               Text="" TextWrapping="Wrap"
+                               FontSize="12" Margin="0,8,0,0"
+                               Foreground="#888888"
+                               Visibility="Collapsed"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- Gemini -->
+            <TabItem x:Name="GeminiTab" Header="Gemini">
+                <StackPanel Margin="14,12">
+                    <TextBlock Text="Gemini Auth" FontWeight="SemiBold"
+                               FontSize="13" Foreground="#EBEBEB" Margin="0,0,0,10"/>
+
+                    <TextBlock Text="How to set up:" FontWeight="SemiBold"
+                               FontSize="12" Foreground="#EBEBEB" Margin="0,0,0,6"/>
+
+                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10"
+                                  Padding="0,0,6,0">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar">
+                                <Setter Property="Width" Value="5"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ScrollBar">
+                                            <Grid Background="Transparent">
+                                                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                                    <Track.DecreaseRepeatButton>
+                                                        <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Height="0"/>
+                                                    </Track.DecreaseRepeatButton>
+                                                    <Track.Thumb>
+                                                        <Thumb>
+                                                            <Thumb.Template>
+                                                                <ControlTemplate TargetType="Thumb">
+                                                                    <Border x:Name="Bg" Background="#3A3A3A" CornerRadius="3"/>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="Bg" Property="Background" Value="#555555"/>
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsDragging" Value="True">
+                                                                            <Setter TargetName="Bg" Property="Background" Value="#D4845A"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Thumb.Template>
+                                                        </Thumb>
+                                                    </Track.Thumb>
+                                                    <Track.IncreaseRepeatButton>
+                                                        <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Height="0"/>
+                                                    </Track.IncreaseRepeatButton>
+                                                </Track>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ScrollViewer.Resources>
+                        <StackPanel>
+                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 1 — Find Client ID and Secret</TextBlock>
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
+                                On any PC with <Run FontWeight="SemiBold" Foreground="#EBEBEB">gemini-cli</Run> installed via npm, run in PowerShell:
+                            </TextBlock>
+                            <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
+                                <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
+                                           xml:space="preserve">$npmGlobal = npm root -g
 Select-String "OAUTH_CLIENT_ID|OAUTH_CLIENT_SECRET" `
   "$npmGlobal\@google\gemini-cli\bundle\chunk-*.js" `
   | Select-Object -First 4</TextBlock>
-                        </Border>
-                        <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,10" TextWrapping="Wrap">
-                            Copy the two values from the output.
-                        </TextBlock>
+                            </Border>
+                            <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,10" TextWrapping="Wrap">
+                                Copy the two values from the output.
+                            </TextBlock>
 
-                        <!-- Step 2 -->
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 2 — Get Refresh Token</TextBlock>
-                        <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
-                            Run <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">gemini</Run> once to log in, then extract the token:
-                        </TextBlock>
-                        <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
-                            <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
-                                       xml:space="preserve">gemini   # log in, then Ctrl+C
+                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 2 — Get Refresh Token</TextBlock>
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
+                                Run <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">gemini</Run> once to log in, then extract the token:
+                            </TextBlock>
+                            <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
+                                <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
+                                           xml:space="preserve">gemini   # log in, then Ctrl+C
 
 $creds = Get-Content "$env:USERPROFILE\.gemini\oauth_creds.json" | ConvertFrom-Json
 $creds.refresh_token   # copy this value</TextBlock>
-                        </Border>
-                        <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,10" TextWrapping="Wrap">
-                            Token is tied to your Google account, not the machine. Treat it like a password.
-                        </TextBlock>
+                            </Border>
+                            <TextBlock FontSize="11" Foreground="#888888" Margin="0,0,0,10" TextWrapping="Wrap">
+                                Token is tied to your Google account, not the machine. Treat it like a password.
+                            </TextBlock>
 
-                        <!-- Step 3 -->
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 3 — Creds file on this PC</TextBlock>
-                        <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
-                            If <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">gemini-cli</Run> is installed here,
-                            <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">%USERPROFILE%\.gemini\oauth_creds.json</Run> already exists — use it directly.
-                            Otherwise create it manually:
-                        </TextBlock>
-                        <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
-                            <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
-                                       xml:space="preserve">New-Item -ItemType Directory -Force "$env:USERPROFILE\.gemini"
+                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D4845A" Margin="0,0,0,4">Step 3 — Creds file on this PC</TextBlock>
+                            <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,0,3" TextWrapping="Wrap">
+                                If <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">gemini-cli</Run> is installed here,
+                                <Run FontFamily="Cascadia Code, Consolas" FontWeight="SemiBold" Foreground="#EBEBEB">%USERPROFILE%\.gemini\oauth_creds.json</Run> already exists — use it directly.
+                                Otherwise create it manually:
+                            </TextBlock>
+                            <Border Background="#181818" CornerRadius="3" Padding="7,5" Margin="0,0,0,3">
+                                <TextBlock FontFamily="Cascadia Code, Consolas" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap"
+                                           xml:space="preserve">New-Item -ItemType Directory -Force "$env:USERPROFILE\.gemini"
 
 @{ refresh_token = "PASTE_TOKEN_HERE" } `
   | ConvertTo-Json `
   | Set-Content "$env:USERPROFILE\.gemini\oauth_creds.json"</TextBlock>
-                        </Border>
+                            </Border>
 
-                        <!-- Token invalidation warning -->
-                        <Border Background="#1E1A10" BorderBrush="#4A3A10" BorderThickness="1"
-                                CornerRadius="3" Padding="7,6" Margin="0,6,0,2">
-                            <TextBlock FontSize="11" Foreground="#D4A72C" TextWrapping="Wrap">
-                                <Run FontWeight="SemiBold">Note:</Run>
-                                <Run>Refresh token invalidates if you revoke access at</Run>
-                                <Run FontFamily="Cascadia Code, Consolas" Foreground="#EBEBEB">myaccount.google.com → Security → Third-party apps → Gemini CLI</Run>
-                                <Run>. Re-run Step 2 after re-authorising.</Run>
-                            </TextBlock>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                            <Border Background="#1E1A10" BorderBrush="#4A3A10" BorderThickness="1"
+                                    CornerRadius="3" Padding="7,6" Margin="0,6,0,2">
+                                <TextBlock FontSize="11" Foreground="#D4A72C" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold">Note:</Run>
+                                    <Run>Refresh token invalidates if you revoke access at</Run>
+                                    <Run FontFamily="Cascadia Code, Consolas" Foreground="#EBEBEB">myaccount.google.com → Security → Third-party apps → Gemini CLI</Run>
+                                    <Run>. Re-run Step 2 after re-authorising.</Run>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
 
-                <Separator Margin="0,0,0,12" Background="#2E2E2E" BorderBrush="#2E2E2E"/>
+                    <Separator Margin="0,0,0,12" Background="#2E2E2E" BorderBrush="#2E2E2E"/>
 
-                <!-- Client ID -->
-                <TextBlock Text="Client ID:" FontSize="12" FontWeight="SemiBold"
-                           Foreground="#EBEBEB" Margin="0,0,0,4"/>
-                <TextBox x:Name="GeminiClientIdBox"
-                         Padding="7,6" Margin="0,0,0,10"
-                         FontFamily="Cascadia Code, Consolas" FontSize="11"/>
-
-                <!-- Client Secret -->
-                <TextBlock Text="Client Secret:" FontSize="12" FontWeight="SemiBold"
-                           Foreground="#EBEBEB" Margin="0,0,0,4"/>
-                <PasswordBox x:Name="GeminiClientSecretBox"
+                    <TextBlock Text="Client ID:" FontSize="12" FontWeight="SemiBold"
+                               Foreground="#EBEBEB" Margin="0,0,0,4"/>
+                    <TextBox x:Name="GeminiClientIdBox"
                              Padding="7,6" Margin="0,0,0,10"
                              FontFamily="Cascadia Code, Consolas" FontSize="11"/>
 
-                <!-- Credentials file path -->
-                <TextBlock Text="Credentials file path:" FontSize="12" FontWeight="SemiBold"
-                           Foreground="#EBEBEB" Margin="0,0,0,4"/>
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="GeminiCredPathBox"
-                             Grid.Column="0"
-                             Padding="7,6" Margin="0,0,8,0"
-                             FontFamily="Cascadia Code, Consolas" FontSize="11"/>
-                    <Button x:Name="GeminiBrowseButton"
-                            Grid.Column="1"
-                            Content="Browse…" Width="80" Padding="0,6"
-                            Style="{StaticResource GhostButtonStyle}"
-                            Click="GeminiBrowse_Click"/>
-                </Grid>
+                    <TextBlock Text="Client Secret:" FontSize="12" FontWeight="SemiBold"
+                               Foreground="#EBEBEB" Margin="0,0,0,4"/>
+                    <PasswordBox x:Name="GeminiClientSecretBox"
+                                 Padding="7,6" Margin="0,0,0,10"
+                                 FontFamily="Cascadia Code, Consolas" FontSize="11"/>
 
-                <Button x:Name="GeminiTestButton"
-                        Content="Test Connection"
-                        Width="140" HorizontalAlignment="Left" Padding="0,6"
-                        Click="GeminiTest_Click"/>
+                    <TextBlock Text="Credentials file path:" FontSize="12" FontWeight="SemiBold"
+                               Foreground="#EBEBEB" Margin="0,0,0,4"/>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="GeminiCredPathBox"
+                                 Grid.Column="0"
+                                 Padding="7,6" Margin="0,0,8,0"
+                                 FontFamily="Cascadia Code, Consolas" FontSize="11"/>
+                        <Button x:Name="GeminiBrowseButton"
+                                Grid.Column="1"
+                                Content="Browse…" Width="80" Padding="0,6"
+                                Style="{StaticResource GhostButtonStyle}"
+                                Click="GeminiBrowse_Click"/>
+                    </Grid>
 
-                <TextBlock x:Name="GeminiStatusText"
-                           Text="" TextWrapping="Wrap"
-                           FontSize="12" Margin="0,8,0,0"
-                           Foreground="#888888"
-                           Visibility="Collapsed"/>
-            </StackPanel>
-        </Border>
+                    <Button x:Name="GeminiTestButton"
+                            Content="Test Connection"
+                            Width="140" HorizontalAlignment="Left" Padding="0,6"
+                            Click="GeminiTest_Click"/>
+
+                    <TextBlock x:Name="GeminiStatusText"
+                               Text="" TextWrapping="Wrap"
+                               FontSize="12" Margin="0,8,0,0"
+                               Foreground="#888888"
+                               Visibility="Collapsed"/>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
 
         <!-- Separator -->
-        <Separator Grid.Row="2" Margin="0,0,0,14" Background="#2E2E2E" BorderBrush="#2E2E2E"/>
+        <Separator Grid.Row="1" Margin="0,0,0,14" Background="#2E2E2E" BorderBrush="#2E2E2E"/>
 
         <!-- Refresh interval -->
-        <TextBlock Grid.Row="3" Text="Refresh Interval" FontWeight="SemiBold"
+        <TextBlock Grid.Row="2" Text="Refresh Interval" FontWeight="SemiBold"
                    Foreground="#EBEBEB" Margin="0,0,0,6"/>
-        <ComboBox x:Name="IntervalCombo" Grid.Row="4"
+        <ComboBox x:Name="IntervalCombo" Grid.Row="3"
                   Width="160" HorizontalAlignment="Left" Margin="0,0,0,12">
             <ComboBoxItem Content="1 minute"   Tag="1"/>
             <ComboBoxItem Content="5 minutes"  Tag="5"/>
@@ -594,11 +621,11 @@ $creds.refresh_token   # copy this value</TextBlock>
         </ComboBox>
 
         <!-- Start with Windows -->
-        <CheckBox x:Name="StartupCheckBox" Grid.Row="5"
+        <CheckBox x:Name="StartupCheckBox" Grid.Row="4"
                   Content="Start with Windows" Margin="0,0,0,18"/>
 
-        <!-- Save / Cancel buttons -->
-        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+        <!-- Save / Cancel -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Save" Width="70" Margin="0,0,8,0"
                     Padding="0,6" IsDefault="True" Click="SaveButton_Click"/>
             <Button Content="Cancel" Width="70" Style="{StaticResource GhostButtonStyle}"
